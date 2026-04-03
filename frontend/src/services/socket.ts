@@ -222,49 +222,75 @@ class SocketService {
       return;
     }
     
+    console.log(`🔍 [EMIT-CHECK] Event: ${event}, Socket connected: ${this.socket.connected}, Socket ID: ${this.socket.id}`);
+    
     // If socket is connected, emit immediately
     if (this.socket.connected) {
-      console.log(`📤 Socket connected, emitting event: ${event}`, data);
+      console.log(`✅ [EMIT-NOW] Socket connected, EMITTING event: ${event}`, data);
       this.socket.emit(event as string, data);
       return;
     }
     
-    // Socket exists but NOT connected - try to queue
-    console.warn(`⚠️ Socket not connected for event: ${event}, attempting to queue...`, { 
+    // Socket exists but NOT connected - MUST queue it
+    console.warn(`⚠️ [EMIT-QUEUE] Socket NOT connected for event: ${event}`, { 
       socketId: this.socket.id,
+      socketConnected: this.socket.connected,
+      socketReadyState: (this.socket.io?.engine as any)?.readyState,
       hasConnectionPromise: !!this.connectionPromise,
-      data 
     });
     
+    // Try waiting for connection promise first
     if (this.connectionPromise) {
-      // Connection is in progress - wait for it
+      console.log(`⏳ [EMIT-QUEUE] Connection promise exists, waiting...`);
       this.connectionPromise.then(() => {
         if (this.socket?.connected) {
-          console.log(`📤 Emitting queued event after reconnect: ${event}`);
+          console.log(`✅ [EMIT-DELAYED] Socket now connected after promise! Emitting: ${event}`);
           this.socket!.emit(event as string, data);
         } else {
-          console.error(`❌ Socket still not connected after promise resolved for event: ${event}`);
+          console.error(`❌ [EMIT-FAILED] Socket STILL not connected after promise resolved for: ${event}`);
+          console.log(`❌ [EMIT-DEBUG] Socket state:`, {
+            exists: !!this.socket,
+            connected: this.socket?.connected,
+            id: this.socket?.id,
+          });
         }
       }).catch(err => {
-        console.error(`❌ Connection promise rejected for event: ${event}`, err);
+        console.error(`❌ [EMIT-FAILED] Connection promise rejected for event: ${event}`, err);
       });
-    } else {
-      // No connection promise - socket dropped but might reconnect via auto-reconnect
-      // Queue it by manually polling for connection
-      let retries = 0;
-      const maxRetries = 20; // 20 * 250ms = 5 seconds
-      const retryInterval = setInterval(() => {
-        retries++;
-        if (this.socket?.connected) {
-          console.log(`📤 Emitting queued event after manual retry (attempt ${retries}): ${event}`);
-          this.socket.emit(event as string, data);
-          clearInterval(retryInterval);
-        } else if (retries >= maxRetries) {
-          console.error(`❌ Gave up queuing event after ${maxRetries} retries: ${event}`);
-          clearInterval(retryInterval);
-        }
-      }, 250);
+      return;
     }
+    
+    // No connection promise - manually retry with exponential backoff
+    console.log(`⏳ [EMIT-RETRY] No connection promise, setting up manual retry polling...`);
+    let retries = 0;
+    const maxRetries = 40; // 40 * 100ms = 4 seconds with exponential backoff
+    let retryDelay = 100;
+    
+    const attemptEmit = () => {
+      retries++;
+      const currentDelay = Math.min(retryDelay * retries, 1000); // Cap at 1 second
+      
+      if (this.socket?.connected) {
+        console.log(`✅ [EMIT-RETRY-SUCCESS] Socket NOW connected on attempt ${retries}! Emitting: ${event}`);
+        this.socket.emit(event as string, data);
+        return; // Success - stop retrying
+      } else if (retries >= maxRetries) {
+        console.error(`❌ [EMIT-FAILED] Gave up after ${maxRetries} attempts (${(maxRetries * 125) / 1000}s): ${event}`);
+        console.error(`❌ [EMIT-FINAL-STATE]`, {
+          socketExists: !!this.socket,
+          socketConnected: this.socket?.connected,
+          socketId: this.socket?.id,
+          readyState: (this.socket?.io?.engine as any)?.readyState,
+        });
+        return; // Give up
+      }
+      
+      // Schedule next retry
+      setTimeout(attemptEmit, currentDelay);
+    };
+    
+    // Start retry loop
+    attemptEmit();
   }
 
   // Session management

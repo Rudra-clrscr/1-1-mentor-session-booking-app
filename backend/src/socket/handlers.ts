@@ -38,8 +38,25 @@ export function setupSocketHandlers(io: SocketIOServer) {
     socket.on('language:change', (data) => handleLanguageChange(socket, io, data));
 
     // Chat events
-    socket.on('message:send', (data) => handleMessageSend(socket, io, data));
-    socket.on('session:join', (data) => handleSessionJoin(socket, io, data));
+    socket.on('message:send', (data) => {
+      console.log('💬 ========== BACKEND: message:send event RECEIVED ==========');
+      console.log('📊 Message data:', { 
+        sessionId: data?.sessionId, 
+        userId: data?.userId, 
+        contentLength: data?.content?.length,
+        type: data?.type 
+      });
+      console.log('📊 Socket:', { socketId: socket.id, userId: socket.data.userId });
+      handleMessageSend(socket, io, data);
+      console.log('💬 ========== BACKEND: message:send PROCESSED ==========');
+    });
+    socket.on('session:join', (data) => {
+      console.log('🚪 ========== BACKEND: session:join event RECEIVED ==========');
+      console.log('📊 Event data:', data);
+      console.log('📊 Socket details:', { socketId: socket.id, userId: socket.data.userId });
+      handleSessionJoin(socket, io, data);
+      console.log('🚪 ========== BACKEND: session:join PROCESSED ==========');
+    });
     socket.on('session:leave', (data) => handleSessionLeave(socket, io, data));
 
     // Video events
