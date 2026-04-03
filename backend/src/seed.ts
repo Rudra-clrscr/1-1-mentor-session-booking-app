@@ -37,7 +37,33 @@ async function seedDatabase() {
   try {
     console.log('🌱 Starting database seeding...\n');
 
-    // Generate bcrypt hashes for all test users
+    const now = new Date().toISOString();
+
+    // Step 1: Insert test users into users table
+    console.log('👥 Creating test users...');
+    for (const user of testUsers) {
+      // Check if user already exists
+      const existing = await query(
+        'SELECT id FROM users WHERE id = $1',
+        [user.userId]
+      );
+
+      if (existing.rows.length > 0) {
+        console.log(`⚠️  User already exists: ${user.email}, skipping...`);
+        continue;
+      }
+
+      await query(
+        `INSERT INTO users (id, email, name, role, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [user.userId, user.email, user.name, user.role, now, now]
+      );
+
+      console.log(`✅ User created: ${user.email}`);
+    }
+    console.log();
+
+    // Step 2: Generate bcrypt hashes for all test users
     console.log('🔐 Hashing passwords...');
     const hashedUsers = await Promise.all(
       testUsers.map(async (user) => ({
@@ -47,11 +73,9 @@ async function seedDatabase() {
     );
     console.log('✅ Passwords hashed\n');
 
-    // Insert password hashes
+    // Step 3: Insert password hashes
     console.log('💾 Inserting test user passwords...');
     for (const user of hashedUsers) {
-      const now = new Date().toISOString();
-      
       // Check if password already exists
       const existing = await query(
         'SELECT id FROM user_passwords WHERE user_id = $1',
