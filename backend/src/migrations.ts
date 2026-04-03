@@ -15,8 +15,8 @@ async function runMigrations() {
     console.log('🚀 Starting database migrations...\n');
 
     // Get all migration files sorted by name
-    // When running from dist/migrations.js, __dirname is dist/, so we need ../src/migrations
-    const migrationsDir = path.join(__dirname, '../src/migrations');
+    // migrations.ts is in src/, SQL files are in src/migrations/
+    const migrationsDir = path.join(__dirname, 'migrations');
     console.log(`📂 Looking for migrations in: ${migrationsDir}`);
     
     if (!fs.existsSync(migrationsDir)) {
