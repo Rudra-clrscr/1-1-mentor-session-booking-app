@@ -400,7 +400,8 @@ export default function SessionPage() {
         console.log('✅ Found remote user:', remoteUserId);
 
         // CRITICAL: Join the session room so we receive WebRTC events
-        console.log('🚪 ========== JOINING SESSION ROOM ==========');
+        // This MUST happen immediately and reliably
+        console.log('🚪 ========== JOINING SESSION ROOM (CRITICAL EVENT) ==========');
         console.log('📊 Pre-join socket status:', {
           isConnected: socketService.isConnected(),
           socketId: (socketService as any).socket?.id,
@@ -416,18 +417,39 @@ export default function SessionPage() {
           userName: currentUser?.name || 'User',
         };
         
-        console.log('📤 Emitting session:join event:', joinData);
-        socketService.emit('session:join', joinData as any);
-        console.log('📤 ✅ Session join emit COMPLETED');
+        console.log('📤 About to emit session:join event:', joinData);
         
-        // Wait a moment and check post-join status
+        // CRITICAL: Force emit with multiple attempts if socket not connected
+        let joinAttempts = 0;
+        const maxJoinAttempts = 30;
+        const attemptSessionJoin = () => {
+          joinAttempts++;
+          console.log(`📤 [JOIN-ATTEMPT ${joinAttempts}/${maxJoinAttempts}] Attempting to emit session:join...`);
+          console.log(`   Socket connected: ${socketService.isConnected()}`);
+          
+          if (socketService.isConnected()) {
+            console.log(`✅ [JOIN-SUCCESS] Socket connected! Emitting session:join on attempt ${joinAttempts}`);
+            socketService.emit('session:join', joinData as any);
+            console.log('✅ [JOIN-EMITTED] Session join event SENT');
+            return; // Success
+          } else if (joinAttempts < maxJoinAttempts) {
+            console.log(`⏳ [JOIN-RETRY] Socket not ready, retrying in 100ms...`);
+            setTimeout(attemptSessionJoin, 100);
+          } else {
+            console.error(`❌ [JOIN-FAILED] Failed to join session after ${maxJoinAttempts} attempts (${maxJoinAttempts * 100}ms)`);
+          }
+        };
+        
+        // Start the retry loop
+        attemptSessionJoin();
+        
+        // Also verify status after a delay
         setTimeout(() => {
-          console.log('📊 Post-join socket status (after 200ms):', {
+          console.log('📊 Post-join verification (after 500ms):', {
             isConnected: socketService.isConnected(),
             socketId: (socketService as any).socket?.id,
-            sessionId,
           });
-        }, 200);
+        }, 500);
         console.log('🚪 ========== SESSION ROOM JOIN INITIATED ==========');
 
         // Start local video (this will setup socket listeners)
