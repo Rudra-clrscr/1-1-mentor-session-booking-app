@@ -33,10 +33,14 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 Copy the output and paste in Render environment variables.
 
 ### DATABASE_URL (Backend)
-1. Go to https://neon.tech
-2. Sign up → Create project
-3. Connection string is shown in dashboard
-4. Format: `postgresql://[user]:[password]@[host]/[dbname]`
+
+For detailed Neon database setup and connection string configuration, see:
+
+`docs/NEON_DATABASE_SETUP.md`
+
+Format:
+
+`postgresql://[user]:[password]@[host]/[dbname]`
 
 ### JUDGE0_API_KEY (Backend)
 1. Go to https://rapidapi.com
