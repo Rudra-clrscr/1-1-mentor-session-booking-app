@@ -1,23 +1,11 @@
 # PR Validator Setup Guide
 
-This document explains how to set up and use the PR validation workflows for your repository.
+This document explains how to set up and use the PR validation workflow for your repository.
 
-## 📋 Available Workflows
+## 📋 Available Workflow
 
-### 1. **PR Validator** (`pr-validator.yml`)
-Comprehensive validation that includes:
-- ✅ Frontend & Backend linting
-- ✅ TypeScript type checking
-- ✅ Build verification
-- ✅ Common code issues (console.log, TODOs, hardcoded secrets)
-- ✅ PR description validation
-- ✅ File naming conventions
-- ✅ Merge conflict detection
-- ✅ Security vulnerability checks
-- ✅ Automated PR status comments
-
-### 2. **PR Required Checks** (`pr-required-checks.yml`)
-Minimal required checks for merging:
+### **PR Required Checks** (`pr-required-checks.yml`)
+Essential validation checks for merging:
 - ✅ Frontend & Backend type checking
 - ✅ Frontend & Backend build verification
 - ✅ Syntax error detection
@@ -43,7 +31,6 @@ Branch name pattern: master (or main)
 
 ✅ Require status checks to pass before merging
    - Select: PR Required Checks
-   - Select: PR Validator (optional but recommended)
 
 ✅ Require branches to be up to date before merging
 
@@ -53,10 +40,9 @@ Branch name pattern: master (or main)
 ### Step 2: Configure Required Checks
 
 In the branch protection settings, make sure to select:
-- **PR Required Checks** (minimal checks)
-- **PR Validator** (comprehensive checks)
+- **PR Required Checks** (essential checks)
 
-This ensures that PRs cannot be merged unless all checks pass.
+This ensures that PRs cannot be merged unless all essential checks pass.
 
 ### Step 3: Update package.json Scripts
 
@@ -92,66 +78,21 @@ Ensure your `package.json` files have the necessary scripts:
 - Missing semicolons, brackets, etc.
 
 ### Code Quality
-- Linting issues (ESLint rules)
 - Type safety violations
-- Unused variables and imports
-
-### Security Issues
-- Hardcoded secrets (API keys, passwords)
-- Dependency vulnerabilities
-- Security best practices
-
-### Code Style
-- File naming conventions
-- Code formatting
-- Console.log statements (warnings)
-- TODO/FIXME comments (warnings)
+- Build verification
 
 ### Merge Readiness
 - Merge conflict markers
-- Large files (>500KB)
-- PR description quality
 - Build success
-
-## 🔧 Customization
-
-### Adjust File Size Limits
-Edit the workflow file to change the 500KB limit:
-```yaml
-find frontend/src -type f -size +500k -exec echo "Large file found: {}" \;
-```
-
-### Change Naming Convention Rules
-Modify the regex pattern in the file naming check:
-```yaml
-if [[ ! "$filename" =~ ^[a-z0-9\-_]+$ ]]; then
-```
-
-### Add Custom Checks
-Add your own validation steps in the workflow file under the `jobs` section.
 
 ## 🎯 Workflow Triggers
 
-The workflows run on:
+The workflow runs on:
 - PR opened
 - PR synchronized (new commits pushed)
 - PR reopened
-- PR edited
-
-## 📝 PR Description Requirements
-
-The validator checks that:
-- Description is at least 10 characters long
-- Preferably 50+ characters
-- Mentions what changes were made (fix, feature, change)
 
 ## 🚨 Common Issues
-
-### "No lint script found"
-Add a lint script to your `package.json`:
-```json
-"lint": "next lint"
-```
 
 ### "TypeScript compilation failed"
 Run locally first:
@@ -170,17 +111,15 @@ cd backend && npm install
 ## ✅ Success Indicators
 
 When all checks pass, you'll see:
-- ✅ Green checkmarks on all workflow runs
-- ✅ "PR is ready to merge" comment on your PR
+- ✅ Green checkmarks on the workflow run
 - ✅ Merge button enabled (if branch protection is set up)
 
 ## 🔄 Continuous Improvement
 
-The workflows are designed to be:
-- **Fast**: Only run on changed files where possible
+The workflow is designed to be:
+- **Fast**: Quick type checking and build verification
 - **Informative**: Provide clear error messages
-- **Flexible**: Easy to customize for your needs
-- **Secure**: Check for common security issues
+- **Essential**: Only checks what's necessary for merge readiness
 
 ## 📞 Support
 
