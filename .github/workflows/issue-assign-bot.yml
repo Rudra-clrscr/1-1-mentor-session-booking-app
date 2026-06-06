@@ -6,6 +6,15 @@ on:
   issue_comment:
     types: [created]
   workflow_dispatch:
+    inputs:
+      issue_number:
+        description: 'Issue number to manually assign (Only needed for manual runs)'
+        required: false
+        type: string
+      assignee_username:
+        description: 'GitHub username to assign (Defaults to repository owner if blank)'
+        required: false
+        type: string
 
 jobs:
   handle-assignment:
@@ -19,15 +28,24 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const { owner, repo } = context.repo;
-            const issue_number = context.payload.issue?.number;
+            
+            // 1. Resolve the issue number depending on how it was triggered
+            let issue_number = context.payload.issue?.number;
+            
+            if (context.eventName === 'workflow_dispatch') {
+              const inputNum = '${{ inputs.issue_number }}'.trim();
+              if (inputNum) {
+                issue_number = parseInt(inputNum, 10);
+              }
+            }
 
-            if (!issue_number) {
-              console.log("No issue context found for this event.");
+            if (!issue_number || isNaN(issue_number)) {
+              core.setFailed("Could not resolve a valid issue number. For manual runs, please provide an issue number input.");
               return;
             }
 
             try {
-              // 1. Fetch current status of the issue
+              // 2. Fetch current status of the target issue
               const { data: issue } = await github.rest.issues.get({
                 owner,
                 repo,
@@ -43,22 +61,22 @@ jobs:
               let targetUser = null;
               let reasonMessage = "";
 
-              // 2. Determine who should be assigned based on the trigger event
+              // 3. Determine who should be assigned based on the trigger event
               if (context.eventName === 'issues') {
-                // Assign the creator of the issue right away if opened/edited and unassigned
                 targetUser = issue.user.login;
                 reasonMessage = `👋 @${targetUser}, you have been automatically assigned to this issue as the creator. Good luck! 🚀`;
               } else if (context.eventName === 'issue_comment') {
-                // Assign the first person who interacts by commenting
                 targetUser = context.payload.comment.user.login;
                 reasonMessage = `✅ @${targetUser}, as the first commenter on this unassigned issue, you have been automatically assigned. Happy coding! 🚀`;
               } else if (context.eventName === 'workflow_dispatch') {
-                console.log("Manual trigger active. Automated user tracking requires context events.");
-                return;
+                // For manual dispatch runs, use input username or default to repo owner
+                const inputUser = '${{ inputs.assignee_username }}'.trim();
+                targetUser = inputUser || owner;
+                reasonMessage = `⚡ @${targetUser} has been manually assigned to this issue via administrative trigger.`;
               }
 
               if (targetUser) {
-                // 3. Perform assignment
+                // 4. Perform assignment
                 await github.rest.issues.addAssignees({
                   owner,
                   repo,
@@ -66,7 +84,7 @@ jobs:
                   assignees: [targetUser]
                 });
 
-                // 4. Leave an announcement comment
+                // 5. Leave an announcement comment
                 await github.rest.issues.createComment({
                   owner,
                   repo,
