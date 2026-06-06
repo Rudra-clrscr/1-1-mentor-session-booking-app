@@ -14,6 +14,7 @@ export const config = {
   DB_NAME: process.env.DB_NAME || 'mentor_db',
   DB_USER: process.env.DB_USER || 'postgres',
   DB_PASSWORD: process.env.DB_PASSWORD || 'password',
+  DB_SSL: process.env.DB_SSL ? process.env.DB_SSL === 'true' : !(process.env.DATABASE_URL && (process.env.DATABASE_URL.includes('localhost') || process.env.DATABASE_URL.includes('127.0.0.1'))),
 
   // JWT
   JWT_SECRET: process.env.JWT_SECRET || 'your-secret-key',
