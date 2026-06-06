@@ -120,16 +120,16 @@ export default function ProfilePage() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-dark-950 via-dark-900 to-dark-950 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-dark-950 dark:via-dark-900 dark:to-dark-950 flex items-center justify-center">
         <LoadingSpinner />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-dark-950 via-dark-900 to-dark-950">
+    <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-dark-950 dark:via-dark-900 dark:to-dark-950">
       {/* Header */}
-      <header className="border-b border-gray-700/30 backdrop-blur-sm">
+      <header className="border-b border-gray-200 dark:border-gray-700/30 backdrop-blur-sm">
         <div className="max-w-5xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 md:py-6 flex justify-between items-center">
           <h1 className="text-2xl md:text-3xl font-bold gradient-text">Profile</h1>
           <Link href="/dashboard">
@@ -154,9 +154,9 @@ export default function ProfilePage() {
             <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
               <Avatar name={profile?.name} size="lg" />
               <div className="flex-1">
-                <h2 className="text-2xl md:text-3xl font-bold text-white">{profile?.name}</h2>
-                <p className="text-gray-400 capitalize">{profile?.role}</p>
-                <p className="text-sm text-gray-500">{profile?.email}</p>
+                <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">{profile?.name}</h2>
+                <p className="text-gray-600 dark:text-gray-400 capitalize">{profile?.role}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{profile?.email}</p>
               </div>
               <GlowingButton onClick={() => setEditing(true)} className="w-full md:w-auto">
                 Edit Profile
@@ -166,34 +166,34 @@ export default function ProfilePage() {
             {/* Bio */}
             {profile?.bio && (
               <div>
-                <h3 className="text-lg font-semibold text-white mb-2">About</h3>
-                <p className="text-gray-300">{profile.bio}</p>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">About</h3>
+                <p className="text-gray-700 dark:text-gray-300">{profile.bio}</p>
               </div>
             )}
 
             {/* Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-dark-800/50 rounded-lg p-4">
-                <p className="text-gray-400 text-sm">Sessions</p>
-                <p className="text-2xl font-bold text-white">{profile?.total_sessions || 0}</p>
+              <div className="bg-gray-100 dark:bg-dark-800/50 rounded-lg p-4">
+                <p className="text-gray-500 dark:text-gray-400 text-sm">Sessions</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{profile?.total_sessions || 0}</p>
               </div>
-              <div className="bg-dark-800/50 rounded-lg p-4">
-                <p className="text-gray-400 text-sm">Rating</p>
-                <p className="text-2xl font-bold text-yellow-400">
+              <div className="bg-gray-100 dark:bg-dark-800/50 rounded-lg p-4">
+                <p className="text-gray-500 dark:text-gray-400 text-sm">Rating</p>
+                <p className="text-2xl font-bold text-yellow-500 dark:text-yellow-400">
                   {(profile?.avg_rating && typeof profile.avg_rating === 'number') ? profile.avg_rating.toFixed(1) : '0.0'}
                 </p>
               </div>
               {profile?.role === 'mentor' && (
-                <div className="bg-dark-800/50 rounded-lg p-4">
-                  <p className="text-gray-400 text-sm">Hourly Rate</p>
-                  <p className="text-2xl font-bold text-green-400">
+                <div className="bg-gray-100 dark:bg-dark-800/50 rounded-lg p-4">
+                  <p className="text-gray-500 dark:text-gray-400 text-sm">Hourly Rate</p>
+                  <p className="text-2xl font-bold text-green-500 dark:text-green-400">
                     ${profile?.hourly_rate || 0}/hr
                   </p>
                 </div>
               )}
-              <div className="bg-dark-800/50 rounded-lg p-4">
-                <p className="text-gray-400 text-sm">Member Since</p>
-                <p className="text-lg font-bold text-white">
+              <div className="bg-gray-100 dark:bg-dark-800/50 rounded-lg p-4">
+                <p className="text-gray-500 dark:text-gray-400 text-sm">Member Since</p>
+                <p className="text-lg font-bold text-gray-900 dark:text-white">
                   {new Date(profile?.created_at).getFullYear()}
                 </p>
               </div>
@@ -202,12 +202,12 @@ export default function ProfilePage() {
             {/* Skills */}
             {formData.skills.length > 0 && (
               <div>
-                <h3 className="text-lg font-semibold text-white mb-3">Skills</h3>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Skills</h3>
                 <div className="flex flex-wrap gap-2">
                   {formData.skills.map((skill, idx) => (
                     <Badge key={idx} color="purple">
                       {skill.skill_name}
-                      <span className="ml-2 text-xs">
+                      <span className="ml-2 text-xs opacity-80">
                         {skill.proficiency_level}
                         {skill.years_experience > 0 && ` • ${skill.years_experience}y`}
                       </span>
@@ -234,7 +234,7 @@ export default function ProfilePage() {
         ) : (
           // Edit Mode
           <GlowingCard glow="green" className="space-y-6">
-            <h2 className="text-2xl font-bold text-white">Edit Profile</h2>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Edit Profile</h2>
 
             {/* Basic Info */}
             <div className="space-y-4">
@@ -247,23 +247,21 @@ export default function ProfilePage() {
               />
 
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Bio</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Bio</label>
                 <textarea
                   name="bio"
                   value={formData.bio}
                   onChange={handleInputChange}
                   placeholder="Tell us about yourself..."
                   rows={4}
-                  className="w-full px-4 py-3 bg-dark-800/50 border border-gray-700/50 rounded-lg text-white placeholder-gray-500 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all"
+                  className="w-full px-4 py-3 bg-white dark:bg-dark-800/50 border border-gray-300 dark:border-gray-700/50 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200"
                 />
               </div>
-
-
             </div>
 
             {/* Skills */}
             <div>
-              <h3 className="text-lg font-semibold text-white mb-3">Skills</h3>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Skills</h3>
 
               {/* Existing Skills */}
               {formData.skills.length > 0 && (
@@ -271,18 +269,18 @@ export default function ProfilePage() {
                   {formData.skills.map((skill, idx) => (
                     <div
                       key={idx}
-                      className="flex items-center justify-between bg-dark-800/50 p-3 rounded-lg"
+                      className="flex items-center justify-between bg-gray-100 dark:bg-dark-800/50 p-3 rounded-lg border border-gray-200 dark:border-gray-700/30"
                     >
                       <div>
-                        <p className="text-white font-medium">{skill.skill_name}</p>
-                        <p className="text-xs text-gray-400">
+                        <p className="text-gray-900 dark:text-white font-medium">{skill.skill_name}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
                           {skill.proficiency_level}
                           {skill.years_experience > 0 && ` • ${skill.years_experience} years`}
                         </p>
                       </div>
                       <GlowingButton
                         variant="outline"
-                        className="py-1 px-3 text-xs"
+                        className="py-1 px-3 text-xs bg-white dark:bg-transparent"
                         onClick={() => handleRemoveSkill(idx)}
                       >
                         Remove
@@ -293,8 +291,8 @@ export default function ProfilePage() {
               )}
 
               {/* Add New Skill */}
-              <div className="space-y-3 bg-dark-800/30 p-4 rounded-lg">
-                <h4 className="text-white font-medium">Add Skill</h4>
+              <div className="space-y-3 bg-gray-100/50 dark:bg-dark-800/30 p-4 rounded-lg border border-gray-200/50 dark:border-gray-700/20">
+                <h4 className="text-gray-900 dark:text-white font-medium">Add Skill</h4>
 
                 <GlowingInput
                   label="Skill Name"
@@ -306,7 +304,7 @@ export default function ProfilePage() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Proficiency
                     </label>
                     <select
@@ -317,7 +315,7 @@ export default function ProfilePage() {
                           proficiency_level: e.target.value as 'beginner' | 'intermediate' | 'expert',
                         })
                       }
-                      className="w-full px-3 py-2 bg-dark-800 border border-gray-700/50 rounded-lg text-white text-sm"
+                      className="w-full px-3 py-2 bg-white dark:bg-dark-800 border border-gray-300 dark:border-gray-700/50 rounded-lg text-gray-900 dark:text-white text-sm"
                     >
                       <option value="beginner">Beginner</option>
                       <option value="intermediate">Intermediate</option>
