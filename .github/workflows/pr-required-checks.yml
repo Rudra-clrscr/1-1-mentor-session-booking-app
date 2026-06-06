@@ -1,0 +1,84 @@
+name: PR Required Checks
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [master, main]
+
+jobs:
+  required-checks:
+    name: Required Merge Checks
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: |
+          cd frontend && npm ci
+          cd ../backend && npm ci
+
+      - name: Frontend Type Check (Required)
+        run: |
+          cd frontend
+          npx tsc --noEmit --project .
+        continue-on-error: false
+
+      - name: Backend Type Check (Required)
+        run: |
+          cd backend
+          npx tsc --noEmit --project .
+        continue-on-error: false
+
+      - name: Frontend Build (Required)
+        run: |
+          cd frontend
+          npm run build
+        continue-on-error: false
+
+      - name: Backend Build (Required)
+        run: |
+          cd backend
+          npm run build
+        continue-on-error: false
+
+      - name: Check for Syntax Errors
+        run: |
+          echo "Checking for syntax errors..."
+          
+          # Check TypeScript syntax
+          cd frontend
+          npx tsc --noEmit --project . || exit 1
+          
+          cd ../backend
+          npx tsc --noEmit --project . || exit 1
+        continue-on-error: false
+
+      - name: Check for Merge Conflicts
+        run: |
+          echo "Checking for merge conflicts..."
+          
+          if grep -r "<<<<<<< HEAD" frontend/src --include="*.ts" --include="*.tsx" --exclude-dir=node_modules; then
+            echo "❌ Error: Found merge conflict markers in frontend code"
+            exit 1
+          fi
+          
+          if grep -r "<<<<<<< HEAD" backend/src --include="*.ts" --exclude-dir=node_modules; then
+            echo "❌ Error: Found merge conflict markers in backend code"
+            exit 1
+          fi
+          
+          echo "✅ No merge conflicts found"
+        continue-on-error: false
+
+      - name: Success Check
+        run: |
+          echo "✅ All required checks passed!"
+          echo "✅ PR is ready to merge"

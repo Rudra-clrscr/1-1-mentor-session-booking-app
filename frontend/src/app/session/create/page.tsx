@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiClient } from '@/services/api';
-import { GlowingButton, GlowingInput, GlowingCard, LoadingSpinner } from '@/components/ui/GlowingComponents';
+import { GlowingButton, GlowingInput, GlowingSelect, GlowingCard, LoadingSpinner } from '@/components/ui/GlowingComponents';
 
 export default function CreateSessionPage() {
   const router = useRouter();
@@ -51,9 +51,9 @@ export default function CreateSessionPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-dark-950 via-dark-900 to-dark-950 px-4 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-dark-950 dark:via-dark-900 dark:to-dark-950 px-4 py-8">
       <div className="max-w-2xl mx-auto">
-        <h1 className="text-3xl font-bold text-white mb-8">Create New Session</h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">Create New Session</h1>
 
         <GlowingCard glow="purple">
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -75,7 +75,7 @@ export default function CreateSessionPage() {
             />
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Description
               </label>
               <textarea
@@ -85,7 +85,7 @@ export default function CreateSessionPage() {
                 placeholder="What will you teach in this session?"
                 disabled={loading}
                 rows={4}
-                className="w-full px-4 py-3 bg-dark-800/50 border border-gray-700/50 rounded-lg text-white placeholder-gray-500 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 backdrop-blur-sm"
+                className="w-full px-4 py-3 bg-white dark:bg-dark-800/50 border border-gray-300 dark:border-gray-700/50 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200 backdrop-blur-sm"
               />
             </div>
 
@@ -101,7 +101,7 @@ export default function CreateSessionPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Duration (minutes)
                 </label>
                 <input
@@ -112,48 +112,38 @@ export default function CreateSessionPage() {
                   min="15"
                   max="240"
                   disabled={loading}
-                  className="w-full px-4 py-3 bg-dark-800/50 border border-gray-700/50 rounded-lg text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200"
+                  className="w-full px-4 py-3 bg-white dark:bg-dark-800/50 border border-gray-300 dark:border-gray-700/50 rounded-lg text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200"
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Primary Language
-                </label>
-                <select
-                  name="language"
-                  value={formData.language}
-                  onChange={handleChange}
-                  disabled={loading}
-                  className="w-full px-4 py-3 bg-dark-800/50 border border-gray-700/50 rounded-lg text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200"
-                >
-                  <option value="javascript">JavaScript</option>
-                  <option value="typescript">TypeScript</option>
-                  <option value="python">Python</option>
-                  <option value="java">Java</option>
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Code Language
-              </label>
-              <select
-                name="code_language"
-                value={formData.code_language}
+              <GlowingSelect
+                label="Primary Language"
+                name="language"
+                value={formData.language}
                 onChange={handleChange}
                 disabled={loading}
-                className="w-full px-4 py-3 bg-dark-800/50 border border-gray-700/50 rounded-lg text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200"
               >
-                <option value="javascript">JavaScript</option>
-                <option value="typescript">TypeScript</option>
-                <option value="python">Python</option>
-                <option value="java">Java</option>
-                <option value="cpp">C++</option>
-                <option value="csharp">C#</option>
-              </select>
+                <option value="javascript" className="bg-white dark:bg-dark-900 text-gray-900 dark:text-white">JavaScript</option>
+                <option value="typescript" className="bg-white dark:bg-dark-900 text-gray-900 dark:text-white">TypeScript</option>
+                <option value="python" className="bg-white dark:bg-dark-900 text-gray-900 dark:text-white">Python</option>
+                <option value="java" className="bg-white dark:bg-dark-900 text-gray-900 dark:text-white">Java</option>
+              </GlowingSelect>
             </div>
+
+            <GlowingSelect
+              label="Code Language"
+              name="code_language"
+              value={formData.code_language}
+              onChange={handleChange}
+              disabled={loading}
+            >
+              <option value="javascript" className="bg-white dark:bg-dark-900 text-gray-900 dark:text-white">JavaScript</option>
+              <option value="typescript" className="bg-white dark:bg-dark-900 text-gray-900 dark:text-white">TypeScript</option>
+              <option value="python" className="bg-white dark:bg-dark-900 text-gray-900 dark:text-white">Python</option>
+              <option value="java" className="bg-white dark:bg-dark-900 text-gray-900 dark:text-white">Java</option>
+              <option value="cpp" className="bg-white dark:bg-dark-900 text-gray-900 dark:text-white">C++</option>
+              <option value="csharp" className="bg-white dark:bg-dark-900 text-gray-900 dark:text-white">C#</option>
+            </GlowingSelect>
 
             <div className="grid grid-cols-2 gap-4 pt-6">
               <GlowingButton

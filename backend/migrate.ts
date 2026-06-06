@@ -5,11 +5,11 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+const dbSsl = process.env.DB_SSL ? process.env.DB_SSL === 'true' : !(process.env.DATABASE_URL && (process.env.DATABASE_URL.includes('localhost') || process.env.DATABASE_URL.includes('127.0.0.1')));
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false,
-  },
+  ssl: dbSsl ? { rejectUnauthorized: false } : false,
 });
 
 async function runMigrations() {

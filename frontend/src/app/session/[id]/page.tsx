@@ -1037,29 +1037,29 @@ export default function SessionPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-dark-950 via-dark-900 to-dark-950 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-dark-950 dark:via-dark-900 dark:to-dark-950 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-t-2 border-white mx-auto mb-4"></div>
-          <p className="text-white text-lg">Loading session...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-t-2 border-primary-500 dark:border-white mx-auto mb-4"></div>
+          <p className="text-gray-900 dark:text-white text-lg">Loading session...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="h-screen bg-gradient-to-br from-dark-950 via-dark-900 to-dark-950 flex flex-col">
+    <div className="h-screen bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-dark-950 dark:via-dark-900 dark:to-dark-950 flex flex-col text-gray-900 dark:text-white">
       {/* Header */}
-      <header className="border-b border-gray-700/30 backdrop-blur-sm px-6 py-4 flex-shrink-0">
+      <header className="border-b border-gray-200 dark:border-gray-700/30 backdrop-blur-sm px-6 py-4 flex-shrink-0">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-bold text-white">{session?.title}</h1>
-            <p className="text-gray-400 text-sm">{session?.description}</p>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{session?.title}</h1>
+            <p className="text-gray-500 dark:text-gray-400 text-sm">{session?.description}</p>
           </div>
           <div className="flex items-center gap-4">
             <Badge color="purple">{session?.status}</Badge>
             <GlowingButton 
               variant="outline" 
-              className="text-sm"
+              className="text-sm bg-white dark:bg-transparent"
               onClick={handleEndSession}
             >
               End Session
@@ -1071,20 +1071,20 @@ export default function SessionPage() {
       {/* Main Content - Responsive layout */}
       <div className="flex-1 min-h-0 flex flex-col lg:grid lg:grid-cols-3 gap-2 md:gap-3 lg:gap-4 p-2 md:p-3 lg:p-4 overflow-y-auto lg:overflow-hidden">
         {/* Code Editor - Takes full height on mobile, 2/3 on large screens */}
-        <div className="lg:col-span-2 flex flex-col bg-dark-900/40 rounded-lg border border-gray-700/30 overflow-hidden min-h-[40vh] lg:min-h-0">
-          <div className="px-2 md:px-4 py-2 md:py-3 border-b border-gray-700/30 flex flex-col md:flex-row justify-between items-start md:items-center gap-2 flex-shrink-0">
-            <h2 className="text-base md:text-lg font-bold text-white">Code Editor</h2>
+        <div className="lg:col-span-2 flex flex-col bg-white dark:bg-dark-900/40 rounded-lg border border-gray-200 dark:border-gray-700/30 overflow-hidden min-h-[40vh] lg:min-h-0">
+          <div className="px-2 md:px-4 py-2 md:py-3 border-b border-gray-200 dark:border-gray-700/30 flex flex-col md:flex-row justify-between items-start md:items-center gap-2 flex-shrink-0">
+            <h2 className="text-base md:text-lg font-bold text-gray-900 dark:text-white">Code Editor</h2>
             <div className="flex items-center gap-1 md:gap-2 w-full md:w-auto">
               <select
                 value={language}
                 onChange={(e) => handleLanguageChange(e.target.value)}
-                className="px-2 md:px-3 py-1 bg-dark-800 border border-gray-700/50 rounded text-xs md:text-sm text-white flex-1 md:flex-none"
+                className="px-2 md:px-3 py-1 bg-white dark:bg-dark-800 border border-gray-300 dark:border-gray-700/50 rounded text-xs md:text-sm text-gray-900 dark:text-white flex-1 md:flex-none"
               >
-                <option value="javascript">JavaScript</option>
-                <option value="python">Python</option>
-                <option value="typescript">TypeScript</option>
-                <option value="java">Java</option>
-                <option value="cpp">C++</option>
+                <option value="javascript" className="bg-white dark:bg-dark-900 text-gray-900 dark:text-white">JavaScript</option>
+                <option value="python" className="bg-white dark:bg-dark-900 text-gray-900 dark:text-white">Python</option>
+                <option value="typescript" className="bg-white dark:bg-dark-900 text-gray-900 dark:text-white">TypeScript</option>
+                <option value="java" className="bg-white dark:bg-dark-900 text-gray-900 dark:text-white">Java</option>
+                <option value="cpp" className="bg-white dark:bg-dark-900 text-gray-900 dark:text-white">C++</option>
               </select>
               <GlowingButton 
                 variant="secondary" 
@@ -1122,7 +1122,7 @@ export default function SessionPage() {
         <div className="flex flex-col gap-2 md:gap-3 lg:gap-4 lg:min-h-0 lg:overflow-hidden lg:col-span-1">
           {/* Video Panel - Integrated in session page */}
           <GlowingCard glow="purple" className="flex-shrink-0 h-64 md:h-80 lg:h-96 flex flex-col">
-            <h3 className="font-bold text-white text-xs md:text-base mb-1 md:mb-3 px-2 md:px-4 pt-2 md:pt-4 flex-shrink-0">Video Call</h3>
+            <h3 className="font-bold text-gray-900 dark:text-white text-xs md:text-base mb-1 md:mb-3 px-2 md:px-4 pt-2 md:pt-4 flex-shrink-0">Video Call</h3>
             <div className="flex-1 min-h-0 bg-black rounded overflow-hidden relative">
               {/* 🔴 CRITICAL FIX: Video elements absolutely positioned and fill container */}
               {/* IMPORTANT: Must use absolute inset-0 (NOT flex-1) to properly fill the parent */}
@@ -1217,7 +1217,7 @@ export default function SessionPage() {
             </div>
             
             {/* Video Controls */}
-            <div className="w-full px-2 md:px-4 py-2 md:py-3 border-t border-gray-700/30 gap-1 md:gap-2 flex flex-wrap flex-shrink-0 bg-dark-950/80">
+            <div className="w-full px-2 md:px-4 py-2 md:py-3 border-t border-gray-200 dark:border-gray-700/30 gap-1 md:gap-2 flex flex-wrap flex-shrink-0 bg-gray-100 dark:bg-dark-950/80">
               <GlowingButton 
                 variant="secondary" 
                 className="text-xs flex-1 py-1 md:py-2 min-w-[60px]"
@@ -1307,24 +1307,24 @@ export default function SessionPage() {
 
           {/* Chat Panel */}
           <GlowingCard glow="green" className="flex-1 min-h-[120px] md:min-h-0 flex flex-col overflow-hidden">
-            <h3 className="font-bold text-white text-xs md:text-base mb-1 md:mb-3 px-2 md:px-4 pt-2 md:pt-4 flex-shrink-0">Chat</h3>
+            <h3 className="font-bold text-gray-900 dark:text-white text-xs md:text-base mb-1 md:mb-3 px-2 md:px-4 pt-2 md:pt-4 flex-shrink-0">Chat</h3>
             <div className="flex-1 min-h-0 overflow-y-auto px-2 md:px-4 space-y-2 md:space-y-3 text-xs md:text-sm">
               {messages.map((msg) => (
                 <div key={msg.id} className="flex gap-2">
                   <Avatar name={msg.user?.name || 'User'} size="sm" />
                   <div>
-                    <p className="font-semibold text-white text-xs">{msg.user?.name}</p>
-                    <p className="text-gray-300 break-words text-xs md:text-sm">{msg.content}</p>
+                    <p className="font-semibold text-gray-900 dark:text-white text-xs">{msg.user?.name}</p>
+                    <p className="text-gray-700 dark:text-gray-300 break-words text-xs md:text-sm">{msg.content}</p>
                   </div>
                 </div>
               ))}
               <div ref={messageEndRef} />
             </div>
-            <div className="px-2 md:px-4 py-2 md:py-3 border-t border-gray-700/30 flex-shrink-0">
+            <div className="px-2 md:px-4 py-2 md:py-3 border-t border-gray-200 dark:border-gray-700/30 flex-shrink-0">
               <input
                 type="text"
                 placeholder="Send a message..."
-                className="w-full px-3 py-2 bg-dark-800 border border-gray-700/50 rounded text-white text-sm placeholder-gray-500 focus:border-green-500 focus:ring-1 focus:ring-green-500/50"
+                className="w-full px-3 py-2 bg-white dark:bg-dark-800 border border-gray-300 dark:border-gray-700/50 rounded text-gray-900 dark:text-white text-sm placeholder-gray-500 focus:border-green-500 focus:ring-1 focus:ring-green-500/50 transition-all duration-200"
                 onKeyPress={(e) => {
                   if (e.key === 'Enter' && (e.target as HTMLInputElement).value) {
                     handleSendMessage((e.target as HTMLInputElement).value);
@@ -1339,9 +1339,9 @@ export default function SessionPage() {
 
       {/* Code Execution Output - Compact fixed size at bottom */}
       {executionOutput && (
-        <div className="border-t border-gray-700/30 bg-dark-900/40 p-2 md:p-3 lg:p-4 max-h-[120px] md:max-h-[140px] lg:h-24 overflow-y-auto flex-shrink-0">
-          <p className="text-sm font-semibold text-gray-400 mb-2">Output:</p>
-          <pre className="text-xs md:text-sm text-green-400 font-mono whitespace-pre-wrap break-words">{executionOutput}</pre>
+        <div className="border-t border-gray-200 dark:border-gray-700/30 bg-gray-50 dark:bg-dark-900/40 p-2 md:p-3 lg:p-4 max-h-[120px] md:max-h-[140px] lg:h-24 overflow-y-auto flex-shrink-0">
+          <p className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-2">Output:</p>
+          <pre className="text-xs md:text-sm text-green-700 dark:text-green-400 font-mono whitespace-pre-wrap break-words">{executionOutput}</pre>
         </div>
       )}
     </div>

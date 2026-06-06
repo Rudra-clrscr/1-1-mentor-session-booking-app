@@ -54,20 +54,20 @@ export default function BrowsePage() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-dark-950 via-dark-900 to-dark-950 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-dark-950 dark:via-dark-900 dark:to-dark-950 flex items-center justify-center">
         <LoadingSpinner />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-dark-950 via-dark-900 to-dark-950">
+    <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-dark-950 dark:via-dark-900 dark:to-dark-950">
       {/* Header */}
-      <header className="border-b border-gray-700/30 backdrop-blur-sm">
+      <header className="border-b border-gray-200 dark:border-gray-700/30 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 md:py-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold gradient-text">Browse Sessions</h1>
-            <p className="text-gray-400 text-sm mt-1">Find the perfect mentor</p>
+            <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">Find the perfect mentor</p>
           </div>
           <Link href="/dashboard" className="w-full sm:w-auto">
             <GlowingButton variant="outline" className="w-full sm:w-auto text-sm">Back to Dashboard</GlowingButton>
@@ -79,15 +79,15 @@ export default function BrowsePage() {
         {/* Filter Section */}
         <div className="mb-6 md:mb-8 flex flex-col sm:flex-row gap-2 md:gap-4">
           <div className="flex-1 min-w-0">
-            <label className="block text-xs md:text-sm font-medium text-gray-300 mb-2">Filter by Mentor</label>
+            <label className="block text-xs md:text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Filter by Mentor</label>
             <select
               value={selectedMentor || ''}
               onChange={(e) => setSelectedMentor(e.target.value || null)}
-              className="w-full px-3 md:px-4 py-2 bg-dark-800/50 border border-gray-700/50 rounded-lg text-white text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50"
+              className="w-full px-3 md:px-4 py-2 bg-white dark:bg-dark-800/50 border border-gray-300 dark:border-gray-700/50 rounded-lg text-gray-900 dark:text-white text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50"
             >
-              <option value="">All Mentors</option>
+              <option value="" className="bg-white dark:bg-dark-900 text-gray-900 dark:text-white">All Mentors</option>
               {mentors.map((mentor) => (
-                <option key={mentor.id} value={mentor.id}>
+                <option key={mentor.id} value={mentor.id} className="bg-white dark:bg-dark-900 text-gray-900 dark:text-white">
                   {mentor.name}
                 </option>
               ))}
@@ -95,18 +95,18 @@ export default function BrowsePage() {
           </div>
 
           <div className="flex-1 min-w-0">
-            <label className="block text-xs md:text-sm font-medium text-gray-300 mb-2">Filter by Language</label>
+            <label className="block text-xs md:text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Filter by Language</label>
             <select
               value={filterLanguage}
               onChange={(e) => setFilterLanguage(e.target.value)}
-              className="w-full px-3 md:px-4 py-2 bg-dark-800/50 border border-gray-700/50 rounded-lg text-white text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50"
+              className="w-full px-3 md:px-4 py-2 bg-white dark:bg-dark-800/50 border border-gray-300 dark:border-gray-700/50 rounded-lg text-gray-900 dark:text-white text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50"
             >
-              <option value="">All Languages</option>
-              <option value="javascript">JavaScript</option>
-              <option value="python">Python</option>
-              <option value="java">Java</option>
-              <option value="cpp">C++</option>
-              <option value="typescript">TypeScript</option>
+              <option value="" className="bg-white dark:bg-dark-900 text-gray-900 dark:text-white">All Languages</option>
+              <option value="javascript" className="bg-white dark:bg-dark-900 text-gray-900 dark:text-white">JavaScript</option>
+              <option value="python" className="bg-white dark:bg-dark-900 text-gray-900 dark:text-white">Python</option>
+              <option value="java" className="bg-white dark:bg-dark-900 text-gray-900 dark:text-white">Java</option>
+              <option value="cpp" className="bg-white dark:bg-dark-900 text-gray-900 dark:text-white">C++</option>
+              <option value="typescript" className="bg-white dark:bg-dark-900 text-gray-900 dark:text-white">TypeScript</option>
             </select>
           </div>
         </div>
@@ -119,11 +119,11 @@ export default function BrowsePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 lg:gap-8">
             {/* Mentors Sidebar - Hidden on mobile, shown on md+ */}
             <div className="hidden md:block lg:col-span-1">
-              <h2 className="text-lg md:text-xl font-bold text-white mb-3 md:mb-4">Mentors</h2>
+              <h2 className="text-lg md:text-xl font-bold text-gray-900 dark:text-white mb-3 md:mb-4">Mentors</h2>
               <div className="space-y-2 md:space-y-3">
                 {mentors.length === 0 ? (
                   <GlowingCard glow="blue" className="text-center py-6">
-                    <p className="text-gray-400">No mentors available</p>
+                    <p className="text-gray-600 dark:text-gray-400">No mentors available</p>
                   </GlowingCard>
                 ) : (
                   mentors.map((mentor) => (
@@ -133,14 +133,14 @@ export default function BrowsePage() {
                       className={`p-4 rounded-lg cursor-pointer transition-all duration-200 ${
                         selectedMentor === mentor.id
                           ? 'bg-primary-500/20 border border-primary-500/50'
-                          : 'bg-dark-800/30 border border-gray-700/30 hover:border-gray-600/50'
+                          : 'bg-gray-100 dark:bg-dark-800/30 border border-gray-200 dark:border-gray-700/30 hover:border-gray-300 dark:hover:border-gray-600/50'
                       }`}
                     >
                       <div className="flex items-center gap-3">
                         <Avatar name={mentor.name} size="sm" />
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-white truncate">{mentor.name}</h3>
-                          <p className="text-xs text-gray-400 truncate">{mentor.bio}</p>
+                          <h3 className="font-semibold text-gray-900 dark:text-white truncate">{mentor.name}</h3>
+                          <p className="text-xs text-gray-600 dark:text-gray-400 truncate">{mentor.bio}</p>
                         </div>
                       </div>
                       <Link
@@ -160,13 +160,13 @@ export default function BrowsePage() {
 
             {/* Sessions Grid */}
             <div className="md:col-span-2 lg:col-span-2">
-              <h2 className="text-lg md:text-xl font-bold text-white mb-3 md:mb-4">
+              <h2 className="text-lg md:text-xl font-bold text-gray-900 dark:text-white mb-3 md:mb-4">
                 Available Sessions {filteredSessions.length > 0 && `(${filteredSessions.length})`}
               </h2>
 
               {filteredSessions.length === 0 ? (
                 <GlowingCard glow="blue" className="text-center py-12">
-                  <p className="text-gray-400 text-lg">
+                  <p className="text-gray-600 dark:text-gray-400 text-lg">
                     {selectedMentor
                       ? "This mentor doesn't have any sessions right now"
                       : 'No sessions available. Try adjusting your filters.'}
@@ -179,24 +179,24 @@ export default function BrowsePage() {
                     return (
                       <GlowingCard key={session.id} glow="purple" className="p-3 md:p-4">
                         <div className="flex justify-between items-start mb-2 md:mb-3">
-                          <h3 className="text-base md:text-lg font-bold text-white">{session.title}</h3>
+                          <h3 className="text-base md:text-lg font-bold text-gray-900 dark:text-white">{session.title}</h3>
                           <Badge color="green" className="text-xs md:text-sm">{session.status}</Badge>
                         </div>
 
-                        <p className="text-gray-400 text-xs md:text-sm mb-2 md:mb-3">{session.description}</p>
+                        <p className="text-gray-600 dark:text-gray-400 text-xs md:text-sm mb-2 md:mb-3">{session.description}</p>
 
                         <div className="space-y-1 md:space-y-2 mb-3 md:mb-4 text-xs md:text-sm">
                           <div className="flex items-center gap-2">
-                            <span className="text-gray-400">Mentor:</span>
-                            <span className="text-white font-semibold">{mentor?.name}</span>
+                            <span className="text-gray-500 dark:text-gray-400">Mentor:</span>
+                            <span className="text-gray-900 dark:text-white font-semibold">{mentor?.name}</span>
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className="text-gray-400">Language:</span>
+                            <span className="text-gray-500 dark:text-gray-400">Language:</span>
                             <Badge color="purple">{session.code_language}</Badge>
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className="text-gray-400">Duration:</span>
-                            <span className="text-white">{session.duration_minutes} mins</span>
+                            <span className="text-gray-500 dark:text-gray-400">Duration:</span>
+                            <span className="text-gray-900 dark:text-white">{session.duration_minutes} mins</span>
                           </div>
                         </div>
 
