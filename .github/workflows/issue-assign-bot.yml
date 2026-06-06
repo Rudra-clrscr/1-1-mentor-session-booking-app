@@ -7,8 +7,8 @@ on:
     types: [created]
   workflow_dispatch:
     inputs:
-      issue_number:
-        description: 'Just type the issue number to fix (e.g., 10)'
+      issue_numbers:
+        description: 'Type issue number(s) separated by commas (e.g., 10, 11, 12)'
         required: true
         type: string
 
@@ -24,65 +24,85 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const { owner, repo } = context.repo;
-            
-            // 1. Get the issue number dynamically
-            let issue_number = context.payload.issue?.number;
-            
-            if (context.eventName === 'workflow_dispatch') {
-              const inputNum = '${{ inputs.issue_number }}'.trim();
-              if (inputNum) {
-                issue_number = parseInt(inputNum, 10);
+
+            // Helper function to process a single issue assignment
+            async function assignIssueToCreator(issueNum) {
+              try {
+                // 1. Fetch the issue data
+                const { data: issue } = await github.rest.issues.get({
+                  owner,
+                  repo,
+                  issue_number: issueNum
+                });
+
+                // 2. Skip if it's already assigned
+                if (issue.assignees && issue.assignees.length > 0) {
+                  console.log(`Issue #${issueNum} is already assigned to @${issue.assignees[0].login}. Skipping.`);
+                  return;
+                }
+
+                const issueCreator = issue.user.login;
+
+                // 3. Assign the original creator
+                await github.rest.issues.addAssignees({
+                  owner,
+                  repo,
+                  issue_number: issueNum,
+                  assignees: [issueCreator]
+                });
+
+                // 4. Construct message based on how it was triggered
+                let reasonMessage = `👋 @${issueCreator}, you have been automatically assigned to this issue as the creator. Good luck! 🚀`;
+                
+                if (context.eventName === 'issue_comment') {
+                  const commenter = context.payload.comment.user.login;
+                  reasonMessage = `✅ @${issueCreator} (the issue creator) has been assigned. @${commenter}, thanks for looking into this!`;
+                }
+
+                // 5. Leave the comment
+                await github.rest.issues.createComment({
+                  owner,
+                  repo,
+                  issue_number: issueNum,
+                  body: reasonMessage
+                });
+
+                console.log(`Successfully assigned creator @${issueCreator} to Issue #${issueNum}`);
+
+              } catch (error) {
+                console.error(`Failed to assign Issue #${issueNum}: ${error.message}`);
               }
             }
 
-            if (!issue_number || isNaN(issue_number)) {
-              core.setFailed("Please provide a valid issue number.");
-              return;
+            // ---- EXECUTION ROUTINE ----
+            async function main() {
+              if (context.eventName === 'workflow_dispatch') {
+                // Manual run: Extract and clean up comma-separated values
+                const rawInput = '${{ inputs.issue_numbers }}';
+                const issueList = rawInput.split(',')
+                                         .map(num => parseInt(num.trim(), 10))
+                                         .filter(num => !isNaN(num));
+
+                if (issueList.length === 0) {
+                  core.setFailed("No valid issue numbers provided in manual input.");
+                  return;
+                }
+
+                console.log(`Manual bulk run triggered for issues: ${issueList.join(', ')}`);
+                for (const num of issueList) {
+                  await assignIssueToCreator(num);
+                  // Brief 500ms delay between bulk calls to respect API limits
+                  await new Promise(resolve => setTimeout(resolve, 500));
+                }
+              } else {
+                // Automated run (issues opened/edited, or comments)
+                const autoIssueNum = context.payload.issue?.number;
+                if (!autoIssueNum) {
+                  console.log("No issue context found in event payload.");
+                  return;
+                }
+                await assignIssueToCreator(autoIssueNum);
+              }
             }
 
-            try {
-              // 2. Fetch the target issue data
-              const { data: issue } = await github.rest.issues.get({
-                owner,
-                repo,
-                issue_number
-              });
-
-              // If it's already assigned, don't overwrite it
-              if (issue.assignees && issue.assignees.length > 0) {
-                console.log(`Issue #${issue_number} is already assigned to @${issue.assignees[0].login}. Skipping.`);
-                return;
-              }
-
-              // 3. Find the creator (this works perfectly for new AND old issues!)
-              const issueCreator = issue.user.login;
-
-              // 4. Assign the creator automatically
-              await github.rest.issues.addAssignees({
-                owner,
-                repo,
-                issue_number,
-                assignees: [issueCreator]
-              });
-
-              // 5. Post a simple welcome message
-              let reasonMessage = `👋 @${issueCreator}, you have been automatically assigned to this issue as the creator. Good luck! 🚀`;
-              
-              if (context.eventName === 'issue_comment') {
-                const commenter = context.payload.comment.user.login;
-                // If an issue is unassigned and someone comments, assign the original creator instead
-                reasonMessage = `✅ @${issueCreator} (the issue creator) has been assigned. @${commenter}, thanks for looking into this!`;
-              }
-
-              await github.rest.issues.createComment({
-                owner,
-                repo,
-                issue_number,
-                body: reasonMessage
-              });
-
-              console.log(`Successfully assigned creator @${issueCreator} to Issue #${issue_number}`);
-
-            } catch (error) {
-              core.setFailed(`Failed to assign issue: ${error.message}`);
-            }
+            await main();
