@@ -81,9 +81,9 @@ export default function AdvancedBrowsePage() {
     });
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-dark-950 via-dark-900 to-dark-950">
+    <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-dark-950 dark:via-dark-900 dark:to-dark-950">
       {/* Header */}
-      <header className="border-b border-gray-700/30 backdrop-blur-sm sticky-top-0 z-40">
+      <header className="border-b border-gray-200 dark:border-gray-700/30 backdrop-blur-sm sticky-top-0 z-40">
         <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 md:py-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
             <h1 className="text-2xl md:text-3xl font-bold gradient-text">Find Your Mentor</h1>
@@ -100,7 +100,7 @@ export default function AdvancedBrowsePage() {
             placeholder="Search by name or bio..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full px-4 py-3 bg-dark-800/50 border border-gray-700/50 rounded-lg text-white placeholder-gray-500 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50"
+            className="w-full px-4 py-3 bg-white dark:bg-dark-800/50 border border-gray-300 dark:border-gray-700/50 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200"
           />
         </div>
       </header>
@@ -110,11 +110,11 @@ export default function AdvancedBrowsePage() {
           {/* Filters Sidebar */}
           <div className="lg:col-span-1">
             <GlowingCard glow="purple" className="p-4 md:p-6 sticky top-24 space-y-6">
-              <h2 className="text-lg font-bold text-white">Filters</h2>
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white">Filters</h2>
 
               {/* Minimum Rating */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-3">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                   Minimum Rating: {minRating.toFixed(1)}★
                 </label>
                 <input
@@ -124,13 +124,13 @@ export default function AdvancedBrowsePage() {
                   step="0.5"
                   value={minRating}
                   onChange={(e) => setMinRating(parseFloat(e.target.value))}
-                  className="w-full"
+                  className="w-full cursor-pointer accent-primary-500"
                 />
               </div>
 
               {/* Maximum Hourly Rate */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-3">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                   Max Hourly Rate: ${maxHourlyRate}
                 </label>
                 <input
@@ -140,16 +140,16 @@ export default function AdvancedBrowsePage() {
                   step="10"
                   value={maxHourlyRate}
                   onChange={(e) => setMaxHourlyRate(parseInt(e.target.value))}
-                  className="w-full"
+                  className="w-full cursor-pointer accent-primary-500"
                 />
               </div>
 
               {/* Skills Filter */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-3">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                   Skills
                 </label>
-                <div className="space-y-2">
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                   {availableSkills.map((skill) => (
                     <label key={skill} className="flex items-center gap-2 cursor-pointer">
                       <input
@@ -162,9 +162,9 @@ export default function AdvancedBrowsePage() {
                             setSelectedSkills(selectedSkills.filter((s) => s !== skill));
                           }
                         }}
-                        className="w-4 h-4 rounded"
+                        className="w-4 h-4 rounded border-gray-300 dark:border-gray-700 text-primary-500 focus:ring-primary-500"
                       />
-                      <span className="text-sm text-gray-400">{skill}</span>
+                      <span className="text-sm text-gray-600 dark:text-gray-400">{skill}</span>
                     </label>
                   ))}
                 </div>
@@ -172,17 +172,17 @@ export default function AdvancedBrowsePage() {
 
               {/* Sort */}
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Sort By
                 </label>
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
-                  className="w-full px-3 py-2 bg-dark-800/50 border border-gray-700/50 rounded-lg text-white text-sm"
+                  className="w-full px-3 py-2 bg-white dark:bg-dark-800/50 border border-gray-300 dark:border-gray-700/50 rounded-lg text-gray-900 dark:text-white text-sm"
                 >
-                  <option value="rating">Highest Rated</option>
-                  <option value="price">Lowest Price</option>
-                  <option value="experience">Most Experienced</option>
+                  <option value="rating" className="bg-white dark:bg-dark-900 text-gray-900 dark:text-white">Highest Rated</option>
+                  <option value="price" className="bg-white dark:bg-dark-900 text-gray-900 dark:text-white">Lowest Price</option>
+                  <option value="experience" className="bg-white dark:bg-dark-900 text-gray-900 dark:text-white">Most Experienced</option>
                 </select>
               </div>
 
@@ -212,8 +212,8 @@ export default function AdvancedBrowsePage() {
               </div>
             ) : filteredMentors.length === 0 ? (
               <GlowingCard glow="yellow" className="text-center py-12">
-                <p className="text-yellow-400 text-lg mb-4">No mentors found</p>
-                <p className="text-gray-400 mb-6">
+                <p className="text-yellow-600 dark:text-yellow-400 text-lg mb-4">No mentors found</p>
+                <p className="text-gray-600 dark:text-gray-400 mb-6">
                   Try adjusting your filters or search criteria
                 </p>
               </GlowingCard>
@@ -229,12 +229,12 @@ export default function AdvancedBrowsePage() {
                     <div className="flex gap-4 mb-4">
                       <Avatar name={mentor.name} size="md" />
                       <div className="flex-1">
-                        <h3 className="text-lg font-bold text-white">{mentor.name}</h3>
-                        <p className="text-sm text-gray-400">{mentor.role}</p>
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white">{mentor.name}</h3>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">{mentor.role}</p>
                         {mentor.avg_rating > 0 && (
                           <div className="flex items-center gap-1 mt-1">
-                            <span className="text-yellow-400">★</span>
-                            <span className="text-sm text-gray-300">
+                            <span className="text-yellow-500 dark:text-yellow-400">★</span>
+                            <span className="text-sm text-gray-600 dark:text-gray-300">
                               {mentor.avg_rating.toFixed(1)} ({mentor.total_sessions} reviews)
                             </span>
                           </div>
@@ -244,7 +244,7 @@ export default function AdvancedBrowsePage() {
 
                     {/* Bio */}
                     {mentor.bio && (
-                      <p className="text-sm text-gray-300 mb-4 line-clamp-2">{mentor.bio}</p>
+                      <p className="text-sm text-gray-700 dark:text-gray-300 mb-4 line-clamp-2">{mentor.bio}</p>
                     )}
 
                     {/* Skills */}
@@ -257,7 +257,7 @@ export default function AdvancedBrowsePage() {
                             </Badge>
                           ))}
                           {mentor.skills.length > 3 && (
-                            <span className="text-xs text-gray-400">
+                            <span className="text-xs text-gray-600 dark:text-gray-400">
                               +{mentor.skills.length - 3} more
                             </span>
                           )}
@@ -266,9 +266,9 @@ export default function AdvancedBrowsePage() {
                     )}
 
                     {/* Price & Button */}
-                    <div className="flex items-center justify-between mt-auto pt-4 border-t border-gray-700/30">
+                    <div className="flex items-center justify-between mt-auto pt-4 border-t border-gray-200 dark:border-gray-700/30">
                       {mentor.hourly_rate > 0 && (
-                        <span className="text-lg font-bold text-green-400">
+                        <span className="text-lg font-bold text-green-600 dark:text-green-400">
                           ${mentor.hourly_rate}/hr
                         </span>
                       )}

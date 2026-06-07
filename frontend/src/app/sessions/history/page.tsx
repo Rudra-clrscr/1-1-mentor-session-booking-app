@@ -28,16 +28,16 @@ export default function SessionHistoryPage() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-dark-950 via-dark-900 to-dark-950 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-dark-950 dark:via-dark-900 dark:to-dark-950 flex items-center justify-center">
         <LoadingSpinner />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-dark-950 via-dark-900 to-dark-950">
+    <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-dark-950 dark:via-dark-900 dark:to-dark-950">
       {/* Header */}
-      <header className="border-b border-gray-700/30 backdrop-blur-sm">
+      <header className="border-b border-gray-200 dark:border-gray-700/30 backdrop-blur-sm">
         <div className="max-w-5xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 md:py-6 flex justify-between items-center">
           <h1 className="text-2xl md:text-3xl font-bold gradient-text">Session History</h1>
           <Link href="/dashboard">
@@ -51,8 +51,8 @@ export default function SessionHistoryPage() {
       <main className="max-w-5xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-6 md:py-8">
         {sessions.length === 0 ? (
           <GlowingCard glow="yellow" className="text-center py-12">
-            <p className="text-yellow-400 text-lg mb-4">No sessions yet</p>
-            <p className="text-gray-400 mb-6">
+            <p className="text-yellow-600 dark:text-yellow-400 text-lg mb-4">No sessions yet</p>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
               {user?.role === 'mentor'
                 ? 'Create a session to get started'
                 : 'Browse available sessions to join'}
@@ -77,13 +77,13 @@ export default function SessionHistoryPage() {
               >
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                   <div className="flex-1">
-                    <h3 className="text-lg md:text-xl font-bold text-white">{session.title}</h3>
-                    <p className="text-gray-400 text-sm mt-1">{session.description}</p>
+                    <h3 className="text-lg md:text-xl font-bold text-gray-900 dark:text-white">{session.title}</h3>
+                    <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">{session.description}</p>
                     <div className="flex flex-wrap gap-2 mt-3">
                       <Badge color={session.status === 'completed' ? 'green' : 'purple'}>
                         {session.status}
                       </Badge>
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
                         {new Date(session.created_at).toLocaleDateString()}
                       </span>
                     </div>
@@ -100,30 +100,30 @@ export default function SessionHistoryPage() {
 
                 {/* Expanded Details */}
                 {expandedId === session.id && (
-                  <div className="mt-4 pt-4 border-t border-gray-700/30 space-y-3">
+                  <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700/30 space-y-3">
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                       <div>
-                        <p className="text-gray-400">Language</p>
-                        <p className="text-white font-medium">{session.code_language}</p>
+                        <p className="text-gray-500 dark:text-gray-400">Language</p>
+                        <p className="text-gray-900 dark:text-white font-medium">{session.code_language}</p>
                       </div>
                       <div>
-                        <p className="text-gray-400">Duration</p>
-                        <p className="text-white font-medium">{session.duration_minutes} min</p>
+                        <p className="text-gray-500 dark:text-gray-400">Duration</p>
+                        <p className="text-gray-900 dark:text-white font-medium">{session.duration_minutes} min</p>
                       </div>
                       <div>
-                        <p className="text-gray-400">Topic</p>
-                        <p className="text-white font-medium">{session.topic || 'N/A'}</p>
+                        <p className="text-gray-500 dark:text-gray-400">Topic</p>
+                        <p className="text-gray-900 dark:text-white font-medium">{session.topic || 'N/A'}</p>
                       </div>
                       <div>
-                        <p className="text-gray-400">Participants</p>
-                        <p className="text-white font-medium">2</p>
+                        <p className="text-gray-500 dark:text-gray-400">Participants</p>
+                        <p className="text-gray-900 dark:text-white font-medium">2</p>
                       </div>
                     </div>
 
                     {session.status === 'completed' && (
-                      <div className="bg-dark-800/30 p-3 rounded-lg">
-                        <p className="text-white font-medium mb-2">Feedback</p>
-                        <p className="text-gray-300 text-sm">
+                      <div className="bg-gray-100/50 dark:bg-dark-800/30 p-3 rounded-lg border border-gray-200/50 dark:border-gray-700/20">
+                        <p className="text-gray-900 dark:text-white font-medium mb-2">Feedback</p>
+                        <p className="text-gray-700 dark:text-gray-300 text-sm">
                           {/* TODO: Show feedback if available */}
                           No feedback yet
                         </p>

@@ -8,7 +8,7 @@ const pool = new Pool({
   idleTimeoutMillis: 60000, // Increased to 60 seconds
   connectionTimeoutMillis: 30000, // Increased to 30 seconds
   statement_timeout: 10000,
-  ssl: { rejectUnauthorized: false },
+  ssl: config.DB_SSL ? { rejectUnauthorized: false } : false,
   keepAlive: true,
   keepAliveInitialDelayMillis: 10000,
   // Add connection retry settings
