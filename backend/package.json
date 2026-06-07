@@ -17,6 +17,8 @@
     "dev:all": "npm run dev & npm run collab:server:dev"
   },
   "dependencies": {
+    "@types/node-cron": "^3.0.11",
+    "@types/nodemailer": "^8.0.0",
     "axios": "^1.6.2",
     "bcryptjs": "^2.4.3",
     "compression": "^1.7.4",
@@ -27,6 +29,8 @@
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.0",
     "module-alias": "^2.3.4",
+    "node-cron": "^4.2.1",
+    "nodemailer": "^8.0.10",
     "pg": "^8.11.3",
     "socket.io": "^4.7.2",
     "uuid": "^9.0.1",

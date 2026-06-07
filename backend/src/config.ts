@@ -38,6 +38,13 @@ export const config = {
   ENABLE_SCREEN_SHARING: process.env.ENABLE_SCREEN_SHARING !== 'false',
   ENABLE_RECORDING: process.env.ENABLE_RECORDING === 'true',
   MAX_SESSION_DURATION: parseInt(process.env.MAX_SESSION_DURATION || '3600000'), // 1 hour
+
+  // Email (Gmail SMTP)
+  EMAIL_HOST: process.env.EMAIL_HOST || 'smtp.gmail.com',
+  EMAIL_PORT: parseInt(process.env.EMAIL_PORT || '587'),
+  EMAIL_USER: process.env.EMAIL_USER || '',          // your Gmail address
+  EMAIL_PASS: process.env.EMAIL_PASS || '',          // Gmail App Password
+  EMAIL_FROM: process.env.EMAIL_FROM || '',          // optional display address
 };
 
 export type Config = typeof config;

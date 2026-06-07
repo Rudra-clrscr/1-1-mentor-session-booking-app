@@ -22,6 +22,7 @@ import recordingRoutes from './routes/recordings';
 import adminRoutes from './routes/admin';
 import { setupSocketHandlers } from './socket/handlers';
 import { setupRealtimeHandlers } from './socket/realtimeHandlers';
+import { startReminderService } from './services/reminderService';
 
 const app: Express = express();
 const httpServer = createServer(app);
@@ -149,6 +150,9 @@ httpServer.listen(PORT, () => {
   console.log(`🚀 Backend server running on port ${PORT}`);
   console.log(`Environment: ${config.NODE_ENV}`);
   console.log(`Client URL: ${config.CLIENT_URL}`);
+
+  // Start session reminder cron
+  startReminderService();
 });
 
 export { app, httpServer, io };
