@@ -312,6 +312,11 @@ class ApiClient {
     return this.client.post(`/sessions/${sessionId}/verify-video-code`, { code });
   }
 
+  // Analytics endpoints
+  async getMentorAnalytics(): Promise<ApiResponse<any>> {
+    return this.client.get('/analytics/mentor');
+  }
+
   // Generic post method for other endpoints
   async post<T = any>(endpoint: string, data: any): Promise<ApiResponse<T>> {
     return this.client.post(endpoint, data);

@@ -20,6 +20,7 @@ import availabilityRoutes from './routes/availability';
 import paymentRoutes from './routes/payments';
 import recordingRoutes from './routes/recordings';
 import adminRoutes from './routes/admin';
+import analyticsRoutes from './routes/analytics';
 import { setupSocketHandlers } from './socket/handlers';
 import { setupRealtimeHandlers } from './socket/realtimeHandlers';
 import { startReminderService } from './services/reminderService';
@@ -113,6 +114,7 @@ app.use('/api/availability', availabilityRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/recordings', recordingRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 // Health check
 app.get('/health', async (req: Request, res: Response) => {
