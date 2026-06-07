@@ -1,146 +1,235 @@
-let transporter: any = null;
+import nodemailer from 'nodemailer';
+import { config } from '@/config';
 
-try {
-  // Try to import nodemailer if available
-  // In production, run: npm install nodemailer
-  const nodemailer = require('nodemailer');
-  transporter = nodemailer.createTransport({
-    host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-    port: parseInt(process.env.EMAIL_PORT || '587'),
-    secure: process.env.EMAIL_SECURE === 'true',
+// ─── Transporter ─────────────────────────────────────────────────────────────
+
+function createTransporter() {
+  return nodemailer.createTransport({
+    host: config.EMAIL_HOST,       // smtp.gmail.com
+    port: config.EMAIL_PORT,       // 587
+    secure: config.EMAIL_PORT === 465,
     auth: {
-      user: process.env.EMAIL_USER || '',
-      pass: process.env.EMAIL_PASSWORD || '',
+      user: config.EMAIL_USER,     // your Gmail address
+      pass: config.EMAIL_PASS,     // your Gmail App Password
     },
   });
-} catch (err) {
-  console.warn('⚠️  nodemailer not installed. Email features disabled. Run: npm install nodemailer');
-  transporter = null;
 }
 
-interface EmailOptions {
-  to: string;
-  subject: string;
-  template: string;
-  data: Record<string, any>;
-}
+// ─── Core Send Function ───────────────────────────────────────────────────────
 
-const emailTemplates: Record<string, (data: any) => string> = {
-  'session-booked': (data) => `
-    <h2>Session Booked Successfully!</h2>
-    <p>Hi ${data.studentName},</p>
-    <p>Your session with ${data.mentorName} has been confirmed for <strong>${data.sessionTime}</strong>.</p>
-    <p><strong>Session Details:</strong></p>
-    <ul>
-      <li>Mentor: ${data.mentorName}</li>
-      <li>Date & Time: ${data.sessionTime}</li>
-      <li>Duration: ${data.duration} minutes</li>
-      <li>Topic: ${data.topic}</li>
-    </ul>
-    <p><a href="${process.env.NEXT_PUBLIC_API_URL}/session/${data.sessionId}">Join Session</a></p>
-  `,
+/**
+ * Send a plain email.
+ * Returns true on success, false on failure (never throws).
+ */
+export async function sendEmail(to: string, subject: string, html: string): Promise<boolean> {
+  if (!config.EMAIL_USER || !config.EMAIL_PASS) {
+    console.warn('⚠️ [EMAIL] Email credentials not configured — skipping send.');
+    return false;
+  }
 
-  'session-reminder': (data) => `
-    <h2>Session Reminder</h2>
-    <p>Hi ${data.studentName},</p>
-    <p>Your session with ${data.mentorName} is coming up in 30 minutes!</p>
-    <p><a href="${process.env.NEXT_PUBLIC_API_URL}/session/${data.sessionId}">Join Now</a></p>
-  `,
-
-  'rating-received': (data) => `
-    <h2>You Received a New Rating!</h2>
-    <p>Hi ${data.mentorName},</p>
-    <p>${data.studentName} left you a <strong>${data.rating}⭐</strong> rating after your session.</p>
-    <p><strong>Feedback:</strong> "${data.comment}"</p>
-    <p><a href="${process.env.NEXT_PUBLIC_API_URL}/profile">View Your Profile</a></p>
-  `,
-
-  'session-ended': (data) => `
-    <h2>Session Completed</h2>
-    <p>Hi ${data.studentName},</p>
-    <p>Your session with ${data.mentorName} has ended.</p>
-    <p>Please take a moment to leave feedback and rate your experience.</p>
-    <p><a href="${process.env.NEXT_PUBLIC_API_URL}/sessions/history/${data.sessionId}">Leave Feedback</a></p>
-  `,
-
-  'new-message': (data) => `
-    <h2>New Message from ${data.senderName}</h2>
-    <p>You have a new message during your session.</p>
-    <p><strong>Message:</strong> "${data.messagePreview}..."</p>
-    <p><a href="${process.env.NEXT_PUBLIC_API_URL}/session/${data.sessionId}">View Message</a></p>
-  `,
-
-  'welcome': (data) => `
-    <h2>Welcome to Mentor Sessions! 👋</h2>
-    <p>Hi ${data.userName},</p>
-    <p>Thank you for joining our platform. Get started by exploring mentors or creating your first session.</p>
-    <p><a href="${process.env.NEXT_PUBLIC_API_URL}/dashboard">Go to Dashboard</a></p>
-  `,
-
-  'password-reset': (data) => `
-    <h2>Reset Your Password</h2>
-    <p>Hi ${data.userName},</p>
-    <p>Click the link below to reset your password:</p>
-    <p><a href="${process.env.NEXT_PUBLIC_API_URL}/reset-password?token=${data.resetToken}">Reset Password</a></p>
-    <p>This link expires in 24 hours.</p>
-  `,
-};
-
-export async function sendEmail(options: EmailOptions): Promise<boolean> {
   try {
-    if (!transporter) {
-      console.warn('Email service not initialized. Install nodemailer: npm install nodemailer');
-      return false;
-    }
-    
-    // Get template
-    const template = emailTemplates[options.template];
-    if (!template) {
-      console.error(`Email template not found: ${options.template}`);
-      return false;
-    }
-
-    const htmlContent = template(options.data);
-
-    // Send email
+    const transporter = createTransporter();
     const info = await transporter.sendMail({
-      from: process.env.EMAIL_FROM || 'noreply@mentorsessions.com',
-      to: options.to,
-      subject: options.subject,
-      html: htmlContent,
+      from: `"MentorConnect" <${config.EMAIL_FROM || config.EMAIL_USER}>`,
+      to,
+      subject,
+      html,
     });
-
-    console.log(`✉️ Email sent to ${options.to}: ${info.response}`);
+    console.log(`✅ [EMAIL] Sent to ${to} | id: ${info.messageId}`);
     return true;
-  } catch (error) {
-    console.error('Error sending email:', error);
+  } catch (err) {
+    console.error(`❌ [EMAIL] Failed to send to ${to}:`, err);
     return false;
   }
 }
 
-/**
- * Send multiple emails
- */
-export async function sendBulkEmail(recipients: string[], template: string, data: Record<string, any>) {
-  const results = await Promise.all(
-    recipients.map((to) =>
-      sendEmail({
-        to,
-        subject: data.subject || 'Notification from Mentor Sessions',
-        template,
-        data,
-      })
-    )
-  );
+// ─── HTML Template ────────────────────────────────────────────────────────────
 
-  return results.filter((r) => r).length;
+function buildReminderEmailHTML(params: {
+  recipientName: string;
+  otherPartyName: string;
+  sessionTitle: string;
+  sessionTopic?: string;
+  scheduledAt: Date;
+  minutesBefore: number;
+  joinLink: string;
+  role: 'mentor' | 'student';
+}): string {
+  const { recipientName, otherPartyName, sessionTitle, sessionTopic, scheduledAt, minutesBefore, joinLink, role } =
+    params;
+
+  const timeLabel   = minutesBefore >= 60 ? `${minutesBefore / 60} hour(s)` : `${minutesBefore} minute(s)`;
+  const urgencyColor = minutesBefore <= 30 ? '#ef4444' : '#8B5CF6';
+  const urgencyEmoji = minutesBefore <= 30 ? '🔔' : '📅';
+
+  const formattedTime = scheduledAt.toLocaleString('en-US', {
+    weekday:    'long',
+    year:       'numeric',
+    month:      'long',
+    day:        'numeric',
+    hour:       '2-digit',
+    minute:     '2-digit',
+    timeZoneName: 'short',
+  });
+
+  const otherLabel = role === 'mentor' ? 'Student' : 'Mentor';
+  const tagline    = role === 'student'
+    ? 'Your mentor is ready to help you!'
+    : 'Your student is looking forward to the session!';
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Session Reminder</title>
+  <style>
+    body{margin:0;padding:0;background:#0f0f13;font-family:'Segoe UI',Arial,sans-serif;color:#e2e8f0}
+    .wrap{max-width:600px;margin:0 auto;padding:32px 16px}
+    .card{background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);border-radius:16px;border:1px solid rgba(139,92,246,.3);overflow:hidden}
+    .hdr{background:linear-gradient(135deg,#8B5CF6 0%,#6D28D9 100%);padding:32px 40px;text-align:center}
+    .hdr h1{margin:0;font-size:28px;color:#fff;font-weight:700}
+    .hdr p{margin:8px 0 0;color:rgba(255,255,255,.85);font-size:15px}
+    .body{padding:32px 40px}
+    .badge{display:inline-block;background:${urgencyColor}22;border:1px solid ${urgencyColor};color:${urgencyColor};font-size:14px;font-weight:600;padding:6px 16px;border-radius:999px;margin-bottom:24px}
+    .sc{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:20px 24px;margin:20px 0}
+    .sc .lbl{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#8B5CF6;font-weight:600;margin-bottom:4px}
+    .sc .val{font-size:15px;color:#f1f5f9;margin-bottom:14px}
+    .sc .val:last-child{margin-bottom:0}
+    .btn{display:block;width:fit-content;margin:28px auto;background:linear-gradient(135deg,#8B5CF6,#6D28D9);color:#fff;text-decoration:none;font-size:16px;font-weight:700;padding:14px 36px;border-radius:10px;text-align:center}
+    .ftr{text-align:center;padding:20px 40px;font-size:12px;color:#64748b;border-top:1px solid rgba(255,255,255,.05)}
+    .ftr a{color:#8B5CF6;text-decoration:none}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div class="hdr">
+        <h1>${urgencyEmoji} Session Reminder</h1>
+        <p>Your mentoring session is coming up soon!</p>
+      </div>
+      <div class="body">
+        <p style="font-size:18px;font-weight:600;color:#fff;margin-bottom:16px">Hello, ${recipientName}! 👋</p>
+        <div class="badge">⏰ Starting in ${timeLabel}</div>
+        <p style="color:#94a3b8;font-size:14px;line-height:1.6">
+          You have an upcoming session with <strong style="color:#e2e8f0">${otherPartyName}</strong>.
+          ${tagline}
+        </p>
+        <div class="sc">
+          <div class="lbl">Session Title</div>
+          <div class="val">${sessionTitle}</div>
+          ${sessionTopic ? `<div class="lbl">Topic</div><div class="val">${sessionTopic}</div>` : ''}
+          <div class="lbl">Scheduled Time</div>
+          <div class="val">${formattedTime}</div>
+          <div class="lbl">${otherLabel}</div>
+          <div class="val">${otherPartyName}</div>
+        </div>
+        <a href="${joinLink}" class="btn">🚀 Join Session Now</a>
+        <p style="color:#64748b;font-size:13px;text-align:center">
+          If you can't attend, please notify ${otherPartyName} in advance.
+        </p>
+      </div>
+      <div class="ftr">
+        <p>Sent by <a href="${config.CLIENT_URL}">MentorConnect</a></p>
+        <p>© ${new Date().getFullYear()} MentorConnect. All rights reserved.</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`.trim();
 }
 
-/**
- * Queue email for later sending (useful for batch processing)
- */
-export async function queueEmail(options: EmailOptions, delayMinutes: number = 0) {
-  // TODO: Implement email queue using Bull or similar
-  // For now, send immediately
-  return sendEmail(options);
+// ─── Session Reminder Email ───────────────────────────────────────────────────
+
+export async function sendSessionReminderEmail(params: {
+  recipientEmail: string;
+  recipientName: string;
+  otherPartyName: string;
+  sessionId: string;
+  sessionTitle: string;
+  sessionTopic?: string;
+  scheduledAt: Date;
+  minutesBefore: number;     // 1440 = 24h, 30 = 30min
+  role: 'mentor' | 'student';
+}): Promise<boolean> {
+  const { recipientEmail, recipientName, otherPartyName, sessionId,
+          sessionTitle, sessionTopic, scheduledAt, minutesBefore, role } = params;
+
+  const joinLink  = `${config.CLIENT_URL}/session/${sessionId}`;
+  const timeLabel = minutesBefore >= 60 ? `${minutesBefore / 60} hour(s)` : `${minutesBefore} minute(s)`;
+  const subject   = `⏰ Reminder: "${sessionTitle}" starts in ${timeLabel}`;
+
+  const html = buildReminderEmailHTML({
+    recipientName, otherPartyName, sessionTitle, sessionTopic,
+    scheduledAt, minutesBefore, joinLink, role,
+  });
+
+  return sendEmail(recipientEmail, subject, html);
+}
+
+// ─── Legacy / Existing Template Sender ───────────────────────────────────────
+// Kept for backwards compatibility with existing code that calls sendEmail({ to, subject, template, data })
+
+interface LegacyEmailOptions {
+  to: string;
+  subject: string;
+  template?: string;
+  data?: Record<string, any>;
+}
+
+const legacyTemplates: Record<string, (data: any) => string> = {
+  'session-booked': (d) => `
+    <h2>Session Booked Successfully!</h2>
+    <p>Hi ${d.studentName},</p>
+    <p>Your session with ${d.mentorName} has been confirmed for <strong>${d.sessionTime}</strong>.</p>
+    <ul>
+      <li>Mentor: ${d.mentorName}</li>
+      <li>Date &amp; Time: ${d.sessionTime}</li>
+      <li>Duration: ${d.duration} minutes</li>
+      <li>Topic: ${d.topic}</li>
+    </ul>
+    <p><a href="${process.env.CLIENT_URL}/session/${d.sessionId}">Join Session</a></p>
+  `,
+  'session-reminder': (d) => `
+    <h2>Session Reminder</h2>
+    <p>Hi ${d.studentName},</p>
+    <p>Your session with ${d.mentorName} is coming up in 30 minutes!</p>
+    <p><a href="${process.env.CLIENT_URL}/session/${d.sessionId}">Join Now</a></p>
+  `,
+  'rating-received': (d) => `
+    <h2>You Received a New Rating!</h2>
+    <p>Hi ${d.mentorName},</p>
+    <p>${d.studentName} left you a <strong>${d.rating}⭐</strong> rating after your session.</p>
+    <p><strong>Feedback:</strong> "${d.comment}"</p>
+    <p><a href="${process.env.CLIENT_URL}/profile">View Your Profile</a></p>
+  `,
+  'session-ended': (d) => `
+    <h2>Session Completed</h2>
+    <p>Hi ${d.studentName},</p>
+    <p>Your session with ${d.mentorName} has ended. Please take a moment to leave feedback.</p>
+    <p><a href="${process.env.CLIENT_URL}/sessions/history/${d.sessionId}">Leave Feedback</a></p>
+  `,
+  'welcome': (d) => `
+    <h2>Welcome to MentorConnect! 👋</h2>
+    <p>Hi ${d.userName},</p>
+    <p>Thank you for joining! <a href="${process.env.CLIENT_URL}/dashboard">Go to Dashboard</a></p>
+  `,
+};
+
+export async function sendBulkEmail(recipients: string[], template: string, data: Record<string, any>) {
+  const results = await Promise.all(
+    recipients.map((to) => {
+      const html = legacyTemplates[template]?.(data) ?? `<p>${data.message ?? ''}</p>`;
+      return sendEmail(to, data.subject ?? 'Notification from MentorConnect', html);
+    })
+  );
+  return results.filter(Boolean).length;
+}
+
+export async function queueEmail(options: LegacyEmailOptions, _delayMinutes = 0) {
+  const html = options.template && legacyTemplates[options.template]
+    ? legacyTemplates[options.template](options.data ?? {})
+    : `<p>${options.data?.message ?? ''}</p>`;
+  return sendEmail(options.to, options.subject, html);
 }
