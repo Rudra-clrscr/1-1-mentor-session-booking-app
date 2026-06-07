@@ -6,7 +6,7 @@ A real-time web application for mentors and students to collaborate with video c
 
 ### Core Features ✅
 - **Authentication & Authorization**: Supabase-based auth with Mentor/Student roles
-- **Session Management**: Create, join, and manage 1-on-1 sessions
+- **Session Management**: Create, join, and manage 1-on-1 sessions.
 - **🆕 Collaborative Code Editor** 🚀: Real-time code sync using Yjs CRDT (NO CONFLICTS!)
   - Multiple users edit simultaneously
   - Automatic conflict resolution

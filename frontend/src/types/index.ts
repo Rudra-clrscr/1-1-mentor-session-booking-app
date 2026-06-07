@@ -20,7 +20,7 @@ export interface UserProfile extends User {
 }
 
 // Session Types
-export type SessionStatus = 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
+export type SessionStatus = 'scheduled' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled';
 
 export interface Session {
   id: string;

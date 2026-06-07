@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { GlowingButton, GlowingInput, GlowingCard, GradientText, LoadingSpinner } from '@/components/ui/GlowingComponents';
+import { GlowingButton, GlowingInput, GlowingSelect, GlowingCard, GradientText, LoadingSpinner } from '@/components/ui/GlowingComponents';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function SignupPage() {
@@ -45,20 +45,20 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-dark-950 via-dark-900 to-dark-950 flex items-center justify-center px-4 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-dark-950 dark:via-dark-900 dark:to-dark-950 flex items-center justify-center px-4 py-8">
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold mb-2">
             <GradientText>Mentor Sessions</GradientText>
           </h1>
-          <p className="text-gray-400">Join our mentorship community</p>
+          <p className="text-gray-600 dark:text-gray-400">Join our mentorship community</p>
         </div>
 
         {/* Signup Form */}
         <GlowingCard glow="green" className="space-y-6">
           <div>
-            <h2 className="text-2xl font-bold text-white mb-6">Create Account</h2>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Create Account</h2>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -98,19 +98,16 @@ export default function SignupPage() {
               disabled={isLoading}
             />
 
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">I am a</label>
-              <select
-                name="role"
-                value={formData.role}
-                onChange={handleChange}
-                disabled={isLoading}
-                className="w-full px-4 py-3 bg-dark-800/50 border border-gray-700/50 rounded-lg text-white focus:border-secondary-500 focus:ring-2 focus:ring-secondary-500/50 transition-all duration-200"
-              >
-                <option value="student">Student (Want to learn)</option>
-                <option value="mentor">Mentor (Willing to teach)</option>
-              </select>
-            </div>
+            <GlowingSelect
+              label="I am a"
+              name="role"
+              value={formData.role}
+              onChange={handleChange}
+              disabled={isLoading}
+            >
+              <option value="student" className="bg-white dark:bg-dark-900 text-gray-900 dark:text-white">Student (Want to learn)</option>
+              <option value="mentor" className="bg-white dark:bg-dark-900 text-gray-900 dark:text-white">Mentor (Willing to teach)</option>
+            </GlowingSelect>
 
             <GlowingButton variant="secondary" type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? <LoadingSpinner /> : 'Sign Up'}
@@ -119,16 +116,16 @@ export default function SignupPage() {
 
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-700/30"></div>
+              <div className="w-full border-t border-gray-300 dark:border-gray-700/30"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-dark-800/60 text-gray-400">or</span>
+              <span className="px-2 bg-gray-50 dark:bg-dark-800/60 text-gray-500 dark:text-gray-400">or</span>
             </div>
           </div>
 
-          <p className="text-center text-gray-400">
+          <p className="text-center text-gray-600 dark:text-gray-400">
             Already have an account?{' '}
-            <Link href="/login" className="text-secondary-400 hover:text-secondary-300 font-semibold">
+            <Link href="/login" className="text-secondary-600 hover:text-secondary-500 dark:text-secondary-400 dark:hover:text-secondary-300 font-semibold">
               Sign in
             </Link>
           </p>
@@ -143,7 +140,7 @@ export default function SignupPage() {
           ].map((feature) => (
             <div key={feature.label} className="text-center">
               <div className="text-3xl mb-2">{feature.icon}</div>
-              <p className="text-xs text-gray-400">{feature.label}</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">{feature.label}</p>
             </div>
           ))}
         </div>

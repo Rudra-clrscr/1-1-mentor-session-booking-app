@@ -1,6 +1,6 @@
 -- Create enum types
 CREATE TYPE user_role AS ENUM ('mentor', 'student');
-CREATE TYPE session_status AS ENUM ('scheduled', 'in_progress', 'completed', 'cancelled');
+CREATE TYPE session_status AS ENUM ('scheduled', 'confirmed', 'in_progress', 'completed', 'cancelled');
 CREATE TYPE message_type AS ENUM ('text', 'code_snippet', 'system');
 
 -- Users table

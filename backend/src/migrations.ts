@@ -5,7 +5,7 @@ import { config } from './config';
 
 const pool = new Pool({
   connectionString: config.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
+  ssl: config.DB_SSL ? { rejectUnauthorized: false } : false,
 });
 
 async function runMigrations() {

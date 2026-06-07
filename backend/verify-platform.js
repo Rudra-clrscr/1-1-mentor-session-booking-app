@@ -3,9 +3,11 @@ const pg = require('pg');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
+const dbSsl = process.env.DB_SSL ? process.env.DB_SSL === 'true' : !(process.env.DATABASE_URL && (process.env.DATABASE_URL.includes('localhost') || process.env.DATABASE_URL.includes('127.0.0.1')));
+
 const pool = new pg.Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
+  ssl: dbSsl ? { rejectUnauthorized: false } : false
 });
 
 (async () => {
@@ -28,7 +30,7 @@ const pool = new pg.Pool({
     
     // Test the API
     const client = axios.create({
-      baseURL: 'http://localhost:5000',
+      baseURL: process.env.PORT ? `http://localhost:${process.env.PORT}` : 'http://localhost:5001',
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',

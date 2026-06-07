@@ -62,7 +62,7 @@ export default function MentorProfilePage() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-dark-950 via-dark-900 to-dark-950 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-dark-950 dark:via-dark-900 dark:to-dark-950 flex items-center justify-center">
         <LoadingSpinner />
       </div>
     );
@@ -70,8 +70,8 @@ export default function MentorProfilePage() {
 
   if (error || !mentor) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-dark-950 via-dark-900 to-dark-950">
-        <header className="border-b border-gray-700/30 backdrop-blur-sm">
+      <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-dark-950 dark:via-dark-900 dark:to-dark-950">
+        <header className="border-b border-gray-200 dark:border-gray-700/30 backdrop-blur-sm">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
             <Link href="/browse">
               <GlowingButton variant="outline">Back to Browse</GlowingButton>
@@ -89,9 +89,9 @@ export default function MentorProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-dark-950 via-dark-900 to-dark-950">
+    <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-dark-950 dark:via-dark-900 dark:to-dark-950">
       {/* Header */}
-      <header className="border-b border-gray-700/30 backdrop-blur-sm">
+      <header className="border-b border-gray-200 dark:border-gray-700/30 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex justify-between items-center">
           <h1 className="text-3xl font-bold gradient-text">Mentor Profile</h1>
           <Link href="/browse">
@@ -106,31 +106,31 @@ export default function MentorProfilePage() {
           <div className="flex flex-col md:flex-row gap-8 items-start">
             <div className="flex flex-col items-center text-center">
               <Avatar name={mentor.name} size="lg" />
-              <h2 className="text-2xl font-bold text-white mt-6 mb-2">{mentor.name}</h2>
-              <p className="text-gray-400 mb-4">{mentor.bio || 'No bio provided'}</p>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mt-6 mb-2">{mentor.name}</h2>
+              <p className="text-gray-600 dark:text-gray-400 mb-4">{mentor.bio || 'No bio provided'}</p>
               <Badge color="purple">{mentor.role}</Badge>
             </div>
 
             <div className="flex-1">
               <div className="space-y-4">
                 <div>
-                  <h3 className="text-sm font-medium text-gray-400 mb-2">Email</h3>
-                  <p className="text-white text-lg break-all">{mentor.email}</p>
+                  <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Email</h3>
+                  <p className="text-gray-950 dark:text-white text-lg break-all">{mentor.email}</p>
                 </div>
 
                 <div>
-                  <h3 className="text-sm font-medium text-gray-400 mb-2">Status</h3>
+                  <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Status</h3>
                   <div className="flex items-center gap-2">
                     <span className="inline-block w-3 h-3 rounded-full bg-green-500"></span>
-                    <span className="text-white">
+                    <span className="text-gray-950 dark:text-white">
                       {mentor.verified ? 'Verified Mentor' : 'Not Verified'}
                     </span>
                   </div>
                 </div>
 
                 <div>
-                  <h3 className="text-sm font-medium text-gray-400 mb-2">Available Sessions</h3>
-                  <p className="text-white text-lg font-semibold">{sessions.length} session(s)</p>
+                  <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Available Sessions</h3>
+                  <p className="text-gray-950 dark:text-white text-lg font-semibold">{sessions.length} session(s)</p>
                 </div>
               </div>
             </div>
@@ -139,11 +139,11 @@ export default function MentorProfilePage() {
 
         {/* Sessions */}
         <div>
-          <h3 className="text-2xl font-bold text-white mb-6">Available Sessions</h3>
+          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Available Sessions</h3>
 
           {sessions.length === 0 ? (
             <GlowingCard glow="blue" className="text-center py-12">
-              <p className="text-gray-400 text-lg">This mentor has no available sessions right now</p>
+              <p className="text-gray-600 dark:text-gray-400 text-lg">This mentor has no available sessions right now</p>
               <Link href="/browse" className="inline-block mt-6">
                 <GlowingButton variant="secondary">Browse Other Mentors</GlowingButton>
               </Link>
@@ -153,24 +153,24 @@ export default function MentorProfilePage() {
               {sessions.map((session) => (
                 <GlowingCard key={session.id} glow="purple">
                   <div className="flex justify-between items-start mb-3">
-                    <h4 className="text-lg font-bold text-white">{session.title}</h4>
+                    <h4 className="text-lg font-bold text-gray-900 dark:text-white">{session.title}</h4>
                     <Badge color="green">{session.status}</Badge>
                   </div>
 
-                  <p className="text-gray-400 text-sm mb-4">{session.description}</p>
+                  <p className="text-gray-600 dark:text-gray-400 text-sm mb-4">{session.description}</p>
 
                   <div className="space-y-2 mb-6 text-sm">
                     <div className="flex items-center justify-between">
-                      <span className="text-gray-400">Language:</span>
+                      <span className="text-gray-500 dark:text-gray-400">Language:</span>
                       <Badge color="purple">{session.code_language}</Badge>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-gray-400">Duration:</span>
-                      <span className="text-white font-semibold">{session.duration_minutes} mins</span>
+                      <span className="text-gray-500 dark:text-gray-400">Duration:</span>
+                      <span className="text-gray-950 dark:text-white font-semibold">{session.duration_minutes} mins</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-gray-400">Topic:</span>
-                      <span className="text-white font-semibold">{session.topic || 'General'}</span>
+                      <span className="text-gray-500 dark:text-gray-400">Topic:</span>
+                      <span className="text-gray-950 dark:text-white font-semibold">{session.topic || 'General'}</span>
                     </div>
                   </div>
 
