@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS session_recordings (
   thumbnail_url VARCHAR(500),
   duration INTEGER,
   size_bytes BIGINT,
-  status VARCHAR(50) DEFAULT 'processing' CHECK (status IN ('processing', 'ready', 'failed')),
+  status VARCHAR(50) DEFAULT 'processing' CHECK (status IN ('recording', 'processing', 'ready', 'failed')),
   started_at TIMESTAMP NOT NULL,
   ended_at TIMESTAMP,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
