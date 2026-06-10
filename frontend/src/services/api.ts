@@ -137,7 +137,7 @@ class ApiClient {
     return this.client.get('/profile');
   }
 
-  async updateProfile(data: { bio?: string; avatar_url?: string; skills?: string[] }): Promise<ApiResponse<any>> {
+  async updateProfile(data: { name?: string; bio?: string; avatar_url?: string; hourly_rate?: number; skills?: any[] }): Promise<ApiResponse<any>> {
     return this.client.put('/profile', data);
   }
 

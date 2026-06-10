@@ -30,7 +30,7 @@ router.get('/users', authMiddleware, async (req: Request, res: Response) => {
     query += ' ORDER BY created_at DESC';
 
     const result = await db.query(query, params);
-    res.json({ success: true, users: result.rows });
+    res.json({ success: true, data: result.rows, users: result.rows });
   } catch (error) {
     console.error('Error fetching users:', error);
     res.status(500).json({ error: 'Failed to fetch users' });
@@ -58,7 +58,7 @@ router.get('/stats', authMiddleware, async (req: Request, res: Response) => {
         (SELECT COALESCE(SUM(amount), 0) FROM payments WHERE status = 'completed') as total_revenue
     `);
 
-    res.json({ success: true, stats: stats.rows[0] });
+    res.json({ success: true, data: stats.rows[0], stats: stats.rows[0] });
   } catch (error) {
     console.error('Error fetching stats:', error);
     res.status(500).json({ error: 'Failed to fetch statistics' });
@@ -106,7 +106,7 @@ router.get('/moderation/queue', authMiddleware, async (req: Request, res: Respon
       ORDER BY s.updated_at DESC
     `);
 
-    res.json({ success: true, queue: result.rows });
+    res.json({ success: true, data: result.rows, queue: result.rows });
   } catch (error) {
     console.error('Error fetching moderation queue:', error);
     res.status(500).json({ error: 'Failed to fetch moderation queue' });
@@ -146,7 +146,7 @@ router.get('/reports', authMiddleware, async (req: Request, res: Response) => {
       ORDER BY created_at DESC
     `);
 
-    res.json({ success: true, reports: result.rows });
+    res.json({ success: true, data: result.rows, reports: result.rows });
   } catch (error) {
     console.error('Error fetching reports:', error);
     res.status(500).json({ error: 'Failed to fetch reports' });

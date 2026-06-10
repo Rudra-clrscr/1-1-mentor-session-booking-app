@@ -5,8 +5,8 @@ import { v4 as uuidv4 } from 'uuid';
 
 const router = Router();
 
-// Get session history for user (completed sessions)
-router.get('/user/history', authMiddleware, async (req: AuthRequest, res: Response) => {
+// Shared user history handler
+const userHistoryHandler = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.id;
     const role = req.user?.role;
@@ -52,6 +52,77 @@ router.get('/user/history', authMiddleware, async (req: AuthRequest, res: Respon
   } catch (err) {
     console.error('Get session history error:', err);
     res.status(500).json({ error: 'Failed to get session history' });
+  }
+};
+
+// Get session history for user (completed sessions)
+router.get('/user/history', authMiddleware, userHistoryHandler);
+router.get('/', authMiddleware, userHistoryHandler);
+
+// Get public session history for a specific mentor
+router.get('/mentor/:mentorId', async (req: AuthRequest, res: Response) => {
+  try {
+    const { mentorId } = req.params;
+    const sessions = await query(
+      `SELECT s.id, s.title, s.scheduled_at, s.status, s.duration,
+              u.name as student_name, u.avatar_url as student_avatar
+       FROM sessions s
+       LEFT JOIN users u ON s.student_id = u.id
+       WHERE s.mentor_id = $1 AND s.status = 'completed'
+       ORDER BY s.scheduled_at DESC
+       LIMIT 50`,
+      [mentorId]
+    );
+
+    // Fetch ratings for each session
+    const sessionsWithDetails = await Promise.all(
+      sessions.rows.map(async (session: any) => {
+        const rating = await queryOne('SELECT * FROM ratings WHERE session_id = $1', [session.id]);
+        return { ...session, rating };
+      })
+    );
+
+    res.json({
+      success: true,
+      data: sessionsWithDetails,
+    });
+  } catch (err) {
+    console.error('Get mentor session history error:', err);
+    res.status(500).json({ error: 'Failed to get mentor session history' });
+  }
+});
+
+// Complete session
+router.patch('/:session_id/complete', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { session_id } = req.params;
+    const userId = req.user?.id;
+
+    // Verify session exists and user is part of it
+    const session = await queryOne(
+      'SELECT * FROM sessions WHERE id = $1 AND (mentor_id = $2 OR student_id = $2)',
+      [session_id, userId]
+    );
+
+    if (!session) {
+      return res.status(404).json({ error: 'Session not found or unauthorized' });
+    }
+
+    const now = new Date().toISOString();
+    await query(
+      'UPDATE sessions SET status = $1, ended_at = $2, updated_at = $3 WHERE id = $4',
+      ['completed', now, now, session_id]
+    );
+
+    const updatedSession = await queryOne('SELECT * FROM sessions WHERE id = $1', [session_id]);
+
+    res.json({
+      success: true,
+      data: updatedSession,
+    });
+  } catch (err) {
+    console.error('Complete session error:', err);
+    res.status(500).json({ error: 'Failed to complete session' });
   }
 });
 

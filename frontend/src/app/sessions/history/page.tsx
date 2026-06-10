@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
+import { apiClient } from '@/services/api';
 import { Session } from '@/types';
 import {
   GlowingButton,
@@ -19,11 +20,23 @@ export default function SessionHistoryPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   useEffect(() => {
-    // TODO: Fetch user's session history from API
-    // For now, use mock data
-    const mockSessions: Session[] = [];
-    setSessions(mockSessions);
-    setLoading(false);
+    if (!user?.id) return;
+
+    const fetchHistory = async () => {
+      setLoading(true);
+      try {
+        const response = await apiClient.getSessionHistory();
+        if (response.success && response.data) {
+          setSessions(response.data);
+        }
+      } catch (err) {
+        console.error('Error fetching session history:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchHistory();
   }, [user?.id]);
 
   if (authLoading || loading) {
@@ -121,12 +134,33 @@ export default function SessionHistoryPage() {
                     </div>
 
                     {session.status === 'completed' && (
-                      <div className="bg-gray-100/50 dark:bg-dark-800/30 p-3 rounded-lg border border-gray-200/50 dark:border-gray-700/20">
-                        <p className="text-gray-900 dark:text-white font-medium mb-2">Feedback</p>
-                        <p className="text-gray-700 dark:text-gray-300 text-sm">
-                          {/* TODO: Show feedback if available */}
-                          No feedback yet
-                        </p>
+                      <div className="bg-gray-100/50 dark:bg-dark-800/30 p-3 rounded-lg border border-gray-200/50 dark:border-gray-700/20 space-y-2">
+                        <p className="text-gray-900 dark:text-white font-medium">Feedback & Rating</p>
+                        {(session as any).rating && (
+                          <div className="text-sm">
+                            <span className="text-yellow-500 font-bold">★ {(session as any).rating.rating}</span>
+                            {(session as any).rating.review && (
+                              <p className="text-gray-700 dark:text-gray-300 italic mt-1">
+                                "{(session as any).rating.review}"
+                              </p>
+                            )}
+                          </div>
+                        )}
+                        {(session as any).feedback && (
+                          <div className="text-sm text-gray-700 dark:text-gray-300 mt-2">
+                            {(session as any).feedback.feedback && (
+                              <p>Feedback: {(session as any).feedback.feedback}</p>
+                            )}
+                            {(session as any).feedback.difficulty_level && (
+                              <p className="text-xs text-gray-500 mt-1">
+                                Difficulty: {(session as any).feedback.difficulty_level}
+                              </p>
+                            )}
+                          </div>
+                        )}
+                        {!(session as any).rating && !(session as any).feedback && (
+                          <p className="text-gray-700 dark:text-gray-300 text-sm">No feedback or rating yet</p>
+                        )}
                       </div>
                     )}
                   </div>
