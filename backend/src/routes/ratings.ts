@@ -51,8 +51,8 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
   }
 });
 
-// Get ratings for a mentor
-router.get('/mentor/:mentor_id', async (req: AuthRequest, res: Response) => {
+// Shared ratings getter handler
+const getRatingsHandler = async (req: AuthRequest, res: Response) => {
   try {
     const ratings = await query(
       `SELECT r.*, u.name as student_name, u.avatar_url
@@ -72,7 +72,11 @@ router.get('/mentor/:mentor_id', async (req: AuthRequest, res: Response) => {
     console.error('Get ratings error:', err);
     res.status(500).json({ error: 'Failed to get ratings' });
   }
-});
+};
+
+// Get ratings for a mentor
+router.get('/mentor/:mentor_id', getRatingsHandler);
+router.get('/user/:mentor_id', getRatingsHandler);
 
 // Get rating for a session (check if already rated)
 router.get('/session/:session_id', async (req: AuthRequest, res: Response) => {
@@ -116,6 +120,51 @@ router.put('/:rating_id', authMiddleware, async (req: AuthRequest, res: Response
   } catch (err) {
     console.error('Update rating error:', err);
     res.status(500).json({ error: 'Failed to update rating' });
+  }
+});
+
+// Delete rating
+router.delete('/:rating_id', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const ratingId = req.params.rating_id;
+    const studentId = req.user?.id;
+
+    // Find rating to check authorization and get mentor_id
+    const rating = await queryOne(
+      'SELECT * FROM ratings WHERE id = $1',
+      [ratingId]
+    );
+
+    if (!rating) {
+      return res.status(404).json({ error: 'Rating not found' });
+    }
+
+    // Check if user is the student who wrote the review
+    if (rating.student_id !== studentId) {
+      return res.status(403).json({ error: 'Unauthorized to delete this rating' });
+    }
+
+    await query('DELETE FROM ratings WHERE id = $1', [ratingId]);
+
+    // Recalculate mentor's average rating
+    const avgRatingResult = await queryOne(
+      `SELECT AVG(rating)::DECIMAL(3,2) as avg_rating, COUNT(*) as count
+       FROM ratings WHERE mentor_id = $1`,
+      [rating.mentor_id]
+    );
+
+    await query(
+      `UPDATE users SET avg_rating = $1, total_sessions = $2 WHERE id = $3`,
+      [avgRatingResult?.avg_rating || 0, avgRatingResult?.count || 0, rating.mentor_id]
+    );
+
+    res.json({
+      success: true,
+      data: { id: ratingId },
+    });
+  } catch (err) {
+    console.error('Delete rating error:', err);
+    res.status(500).json({ error: 'Failed to delete rating' });
   }
 });
 

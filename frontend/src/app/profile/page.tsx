@@ -47,18 +47,19 @@ export default function ProfilePage() {
     const fetchProfile = async () => {
       setLoading(true);
       try {
-        // For now, construct profile from user data
-        const profile = {
-          ...user,
-          skills: [],
-        };
-        setProfile(profile);
-        setFormData({
-          name: user.name || '',
-          bio: user.bio || '',
-          avatar_url: user.avatar_url || '',
-          skills: profile.skills || [],
-        });
+        const response = await apiClient.getProfile();
+        if (response.success && response.data) {
+          const profileData = response.data;
+          setProfile(profileData);
+          setFormData({
+            name: profileData.name || '',
+            bio: profileData.bio || '',
+            avatar_url: profileData.avatar_url || '',
+            skills: profileData.skills || [],
+          });
+        } else {
+          setError('Failed to load profile');
+        }
       } catch (err) {
         console.error('Error fetching profile:', err);
         setError('Failed to load profile');
@@ -108,9 +109,19 @@ export default function ProfilePage() {
     setSaving(true);
     setError('');
     try {
-      // TODO: Update to use API once profile endpoint is integrated
-      setProfile({ ...formData, id: user?.id });
-      setEditing(false);
+      const response = await apiClient.updateProfile(formData);
+      if (response.success && response.data) {
+        setProfile(response.data);
+        setFormData({
+          name: response.data.name || '',
+          bio: response.data.bio || '',
+          avatar_url: response.data.avatar_url || '',
+          skills: response.data.skills || [],
+        });
+        setEditing(false);
+      } else {
+        setError('Failed to save profile');
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to save profile');
     } finally {

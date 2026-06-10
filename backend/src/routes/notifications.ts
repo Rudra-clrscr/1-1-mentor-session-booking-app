@@ -49,7 +49,7 @@ router.get('/unread/count', authMiddleware, async (req: AuthRequest, res: Respon
 });
 
 // Mark notification as read
-router.put('/:notification_id/read', authMiddleware, async (req: AuthRequest, res: Response) => {
+const markReadHandler = async (req: AuthRequest, res: Response) => {
   try {
     const notificationId = req.params.notification_id;
 
@@ -66,7 +66,10 @@ router.put('/:notification_id/read', authMiddleware, async (req: AuthRequest, re
     console.error('Mark read error:', err);
     res.status(500).json({ error: 'Failed to mark notification as read' });
   }
-});
+};
+
+router.put('/:notification_id/read', authMiddleware, markReadHandler);
+router.patch('/:notification_id/read', authMiddleware, markReadHandler);
 
 // Mark all as read
 router.put('/mark-all/read', authMiddleware, async (req: AuthRequest, res: Response) => {
@@ -105,6 +108,35 @@ router.delete('/:notification_id', authMiddleware, async (req: AuthRequest, res:
   } catch (err) {
     console.error('Delete notification error:', err);
     res.status(500).json({ error: 'Failed to delete notification' });
+  }
+});
+
+// Create notification (client-accessible)
+router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { user_id, type, title, message, related_id } = req.body;
+    if (!user_id || !type || !title || !message) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    const notificationId = uuidv4();
+    const now = new Date().toISOString();
+
+    await query(
+      `INSERT INTO notifications (id, user_id, type, title, message, related_id, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [notificationId, user_id, type, title, message, related_id || null, now]
+    );
+
+    const newNotification = await queryOne('SELECT * FROM notifications WHERE id = $1', [notificationId]);
+
+    res.json({
+      success: true,
+      data: newNotification,
+    });
+  } catch (err) {
+    console.error('Create notification route error:', err);
+    res.status(500).json({ error: 'Failed to create notification' });
   }
 });
 

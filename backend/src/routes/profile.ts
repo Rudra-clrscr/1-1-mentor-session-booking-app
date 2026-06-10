@@ -4,7 +4,40 @@ import authMiddleware, { AuthRequest } from '@/middleware/auth';
 
 const router = Router();
 
-// Get user profile with skills
+// Get own profile with skills (authenticated)
+router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    const user = await queryOne(
+      `SELECT id, email, name, role, avatar_url, bio, hourly_rate, 
+              total_sessions, avg_rating, verified, created_at
+       FROM users WHERE id = $1`,
+      [userId]
+    );
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Fetch user skills
+    const skills = await query(
+      `SELECT skill_name, proficiency_level, years_experience 
+       FROM user_skills WHERE user_id = $1 
+       ORDER BY proficiency_level DESC`,
+      [userId]
+    );
+
+    res.json({
+      success: true,
+      data: { ...user, skills: skills.rows },
+    });
+  } catch (err) {
+    console.error('Get own profile error:', err);
+    res.status(500).json({ error: 'Failed to get profile' });
+  }
+});
+
+// Get user profile with skills by ID
 router.get('/:id', async (req: AuthRequest, res: Response) => {
   try {
     const user = await queryOne(
@@ -36,8 +69,8 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
   }
 });
 
-// Update user profile (authenticated)
-router.put('/profile/update', authMiddleware, async (req: AuthRequest, res: Response) => {
+// Shared update handler
+const updateProfileHandler = async (req: AuthRequest, res: Response) => {
   try {
     const { name, bio, avatar_url, hourly_rate, skills } = req.body;
     const userId = req.user?.id;
@@ -92,6 +125,73 @@ router.put('/profile/update', authMiddleware, async (req: AuthRequest, res: Resp
   } catch (err) {
     console.error('Update profile error:', err);
     res.status(500).json({ error: 'Failed to update profile' });
+  }
+};
+
+// Update user profile (authenticated)
+router.put('/', authMiddleware, updateProfileHandler);
+router.put('/profile/update', authMiddleware, updateProfileHandler);
+
+// Add skill
+router.post('/skills', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { name, proficiency_level, years_experience } = req.body;
+    const userId = req.user?.id;
+
+    if (!name) {
+      return res.status(400).json({ error: 'Skill name is required' });
+    }
+
+    // Check if skill already exists
+    const existing = await queryOne(
+      'SELECT * FROM user_skills WHERE user_id = $1 AND skill_name = $2',
+      [userId, name]
+    );
+
+    if (existing) {
+      return res.status(400).json({ error: 'Skill already exists' });
+    }
+
+    await query(
+      `INSERT INTO user_skills (user_id, skill_name, proficiency_level, years_experience)
+       VALUES ($1, $2, $3, $4)`,
+      [userId, name, proficiency_level || 'intermediate', years_experience || 0]
+    );
+
+    const newSkill = await queryOne(
+      `SELECT skill_name, proficiency_level, years_experience 
+       FROM user_skills WHERE user_id = $1 AND skill_name = $2`,
+      [userId, name]
+    );
+
+    res.json({
+      success: true,
+      data: newSkill,
+    });
+  } catch (err) {
+    console.error('Add skill error:', err);
+    res.status(500).json({ error: 'Failed to add skill' });
+  }
+});
+
+// Remove skill
+router.delete('/skills/:skillName', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { skillName } = req.params;
+    const userId = req.user?.id;
+
+    await query(
+      'DELETE FROM user_skills WHERE user_id = $1 AND skill_name = $2',
+      [userId, skillName]
+    );
+
+    res.json({
+      success: true,
+      data: { skill_name: skillName },
+    });
+  } catch (err) {
+    console.error('Remove skill error:', err);
+    res.status(500).json({ error: 'Failed to remove skill' });
   }
 });
 
