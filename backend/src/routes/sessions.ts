@@ -120,6 +120,11 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ error: 'Session not found' });
     }
 
+    // Restrict access to booked sessions to only the participants
+    if (session.student_id && session.student_id !== req.user?.id && session.mentor_id !== req.user?.id) {
+      return res.status(403).json({ error: 'Unauthorized to view this session' });
+    }
+
     res.json({
       success: true,
       data: session,
@@ -139,6 +144,34 @@ router.post('/:id/join', authMiddleware, async (req: AuthRequest, res: Response)
 
     if (!session) {
       return res.status(404).json({ error: 'Session not found' });
+    }
+
+    // Only students can join sessions
+    if (req.user?.role !== 'student') {
+      return res.status(403).json({ error: 'Only students can join sessions' });
+    }
+
+    // Mentors cannot join their own sessions
+    if (session.mentor_id === req.user?.id) {
+      return res.status(400).json({ error: 'Mentors cannot join their own sessions' });
+    }
+
+    // Session must be in scheduled or confirmed status to be joinable
+    if (session.status === 'completed' || session.status === 'cancelled') {
+      return res.status(400).json({ error: 'This session is no longer available to join' });
+    }
+
+    // If already joined by this student, return success directly
+    if (session.student_id === req.user?.id) {
+      return res.json({
+        success: true,
+        data: session,
+      });
+    }
+
+    // Prevent hijacking if session is already joined by someone else
+    if (session.student_id && session.student_id !== req.user?.id) {
+      return res.status(400).json({ error: 'This session has already been joined by another student' });
     }
 
     // Update session with student_id and change status
@@ -163,6 +196,17 @@ router.post('/:id/join', authMiddleware, async (req: AuthRequest, res: Response)
 router.post('/:id/end', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const now = new Date().toISOString();
+
+    const session = await queryOne('SELECT * FROM sessions WHERE id = $1', [req.params.id]);
+
+    if (!session) {
+      return res.status(404).json({ error: 'Session not found' });
+    }
+
+    // Only allow participants to end the session
+    if (session.mentor_id !== req.user?.id && session.student_id !== req.user?.id) {
+      return res.status(403).json({ error: 'Unauthorized to end this session' });
+    }
 
     await query(
       'UPDATE sessions SET status = $1, ended_at = $2, updated_at = $3 WHERE id = $4',
@@ -192,12 +236,17 @@ router.post('/:id/video-code', authMiddleware, async (req: AuthRequest, res: Res
     console.log('============================================================\n');
 
     // First verify session exists
-    const sessionCheck = await queryOne('SELECT id, video_code FROM sessions WHERE id = $1', [sessionId]);
+    const sessionCheck = await queryOne('SELECT id, mentor_id, student_id, video_code FROM sessions WHERE id = $1', [sessionId]);
     if (!sessionCheck) {
       console.error('❌ Session not found');
       return res.status(404).json({ error: 'Session not found' });
     }
     console.log('✅ Session exists');
+
+    // Restrict to session participants
+    if (sessionCheck.mentor_id !== req.user?.id && sessionCheck.student_id !== req.user?.id) {
+      return res.status(403).json({ error: 'Unauthorized to generate code for this session' });
+    }
 
     // Check if there's already an unexpired code
     if (sessionCheck.video_code) {
@@ -299,7 +348,7 @@ router.post('/:id/verify-video-code', authMiddleware, async (req: AuthRequest, r
     }
 
     const session = await queryOne(
-      'SELECT video_code, video_code_expires_at FROM sessions WHERE id = $1',
+      'SELECT mentor_id, student_id, video_code, video_code_expires_at FROM sessions WHERE id = $1',
       [sessionId]
     );
 
@@ -312,6 +361,11 @@ router.post('/:id/verify-video-code', authMiddleware, async (req: AuthRequest, r
     if (!session) {
       console.error('❌ Session not found');
       return res.status(404).json({ error: 'Session not found' });
+    }
+
+    // Restrict to session participants
+    if (session.mentor_id !== req.user?.id && session.student_id !== req.user?.id) {
+      return res.status(403).json({ error: 'Unauthorized to verify code for this session' });
     }
 
     if (!session.video_code) {
