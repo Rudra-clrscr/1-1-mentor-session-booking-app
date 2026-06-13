@@ -145,6 +145,10 @@ class ApiClient {
     return this.client.get(`/profile/${userId}`);
   }
 
+  async getAllMentors(): Promise<ApiResponse<any[]>> {
+    return this.client.get('/profile/mentors/all');
+  }
+
   async addSkill(skill: string): Promise<ApiResponse<any>> {
     return this.client.post('/profile/skills', { name: skill });
   }

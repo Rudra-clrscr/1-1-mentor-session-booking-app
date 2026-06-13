@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { User, Session } from '@/types';
+import { apiClient } from '@/services/api';
 import {
   GlowingButton,
   GlowingCard,
@@ -16,7 +17,7 @@ export default function AdvancedBrowsePage() {
   const { user, isLoading: authLoading } = useAuth();
   const [mentors, setMentors] = useState<any[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   // Filters
   const [minRating, setMinRating] = useState(0);
@@ -41,9 +42,22 @@ export default function AdvancedBrowsePage() {
   ];
 
   useEffect(() => {
-    // TODO: Fetch mentors with skill data
-    setLoading(false);
-  }, []);
+  const fetchMentors = async () => {
+    setLoading(true);
+    try {
+      const response = await apiClient.getAllMentors();
+      const data = (response as any)?.data ?? (response as any);
+      setMentors(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Failed to fetch mentors:', err);
+      setMentors([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchMentors();
+}, []);
 
   // Filter and sort mentors
   const filteredMentors = mentors
