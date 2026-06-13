@@ -197,15 +197,17 @@ router.post('/:id/end', authMiddleware, async (req: AuthRequest, res: Response) 
   try {
     const now = new Date().toISOString();
 
+    // 1. Fetch the session
     const session = await queryOne('SELECT * FROM sessions WHERE id = $1', [req.params.id]);
 
+    // 2. Check if it exists
     if (!session) {
       return res.status(404).json({ error: 'Session not found' });
     }
 
-    // Only allow participants to end the session
-    if (session.mentor_id !== req.user?.id && session.student_id !== req.user?.id) {
-      return res.status(403).json({ error: 'Unauthorized to end this session' });
+    // 3. Verify authorization (Mentor only)
+    if (session.mentor_id !== req.user?.id) {
+      return res.status(403).json({ error: 'You are not authorized to end this session' });
     }
 
     await query(
@@ -254,7 +256,7 @@ router.post('/:id/video-code', authMiddleware, async (req: AuthRequest, res: Res
         'SELECT video_code, video_code_expires_at FROM sessions WHERE id = $1 AND video_code IS NOT NULL AND video_code_expires_at > NOW()',
         [sessionId]
       );
-      
+
       if (existingCode?.video_code) {
         console.log(`♻️  Returning existing code: ${existingCode.video_code}`);
         return res.json({
@@ -293,7 +295,7 @@ router.post('/:id/video-code', authMiddleware, async (req: AuthRequest, res: Res
       'SELECT video_code, video_code_expires_at FROM sessions WHERE id = $1',
       [sessionId]
     );
-    
+
     console.log('📊 Database verification:', {
       storedCode: verifyStore?.video_code || '(NULL)',
       expectedCode: code,
@@ -305,7 +307,7 @@ router.post('/:id/video-code', authMiddleware, async (req: AuthRequest, res: Res
       console.error('❌ CODE STORAGE FAILED!');
       console.error(`   Expected: ${code}`);
       console.error(`   Got: ${verifyStore?.video_code}`);
-      return res.status(500).json({ 
+      return res.status(500).json({
         error: 'Failed to store code in database',
         expected: code,
         stored: verifyStore?.video_code
@@ -321,7 +323,7 @@ router.post('/:id/video-code', authMiddleware, async (req: AuthRequest, res: Res
     });
   } catch (err) {
     console.error('❌ Generate code error:', err);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to generate video code',
       details: err instanceof Error ? err.message : String(err)
     });
@@ -380,7 +382,7 @@ router.post('/:id/verify-video-code', authMiddleware, async (req: AuthRequest, r
       const expiryDate = new Date(String(session.video_code_expires_at));
       const expiryMs = expiryDate.getTime();
       const timeRemainingMs = expiryMs - nowMs;
-      
+
       console.log('⏳ Checking expiry:', {
         expiryMs,
         nowMs,
@@ -421,7 +423,7 @@ router.post('/:id/verify-video-code', authMiddleware, async (req: AuthRequest, r
     console.log('✅ Code cleared from database');
 
     console.log('✅ VERIFICATION SUCCESSFUL\n');
-    
+
     // Emit socket event to notify both users that code verification succeeded
     if (io) {
       console.log(`📡 Emitting video:code-verified event for session ${sessionId}`);
@@ -430,15 +432,15 @@ router.post('/:id/verify-video-code', authMiddleware, async (req: AuthRequest, r
         timestamp: Date.now(),
       });
     }
-    
+
     res.json({
       success: true,
       message: 'Video code verified successfully',
     });
   } catch (err) {
     console.error('❌ Verify code error:', err);
-    res.status(500).json({ 
-      error: 'Failed to verify video code', 
+    res.status(500).json({
+      error: 'Failed to verify video code',
       details: err instanceof Error ? err.message : String(err)
     });
   }
