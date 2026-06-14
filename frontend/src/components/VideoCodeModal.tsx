@@ -73,10 +73,10 @@ export function VideoCodeModal({
         {isStudent && code ? (
           // Student side - show code
           <div className="text-center">
-            <h2 className="text-2xl font-bold text-white mb-4">Video Conference Code</h2>
-            <p className="text-gray-400 mb-6">Share this code with your mentor</p>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Video Conference Code</h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">Share this code with your mentor</p>
 
-            <div className="bg-dark-800 border-2 border-purple-500/50 rounded-lg p-6 mb-6">
+            <div className="bg-gray-100 dark:bg-dark-800 border-2 border-purple-500/50 rounded-lg p-6 mb-6">
               <div className="text-5xl font-bold text-purple-400 tracking-widest font-mono">
                 {code}
               </div>
@@ -84,7 +84,7 @@ export function VideoCodeModal({
 
             <button
               onClick={copyToClipboard}
-              className="w-full px-4 py-2 bg-dark-800 border border-purple-500/50 rounded-lg text-white hover:bg-dark-700 transition mb-4"
+              className="w-full px-4 py-2 bg-gray-100 dark:bg-dark-800 border border-purple-500/50 rounded-lg text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-dark-700 transition mb-4"
             >
               {copied ? '✓ Copied!' : 'Copy Code'}
             </button>
@@ -98,8 +98,8 @@ export function VideoCodeModal({
         ) : (
           // Mentor side - input code
           <div>
-            <h2 className="text-2xl font-bold text-white mb-4">Enter Video Conference Code</h2>
-            <p className="text-gray-400 mb-6">Ask the student for the 4-digit code</p>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Enter Video Conference Code</h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">Ask the student for the 4-digit code</p>
 
             <input
               type="text"
@@ -111,10 +111,10 @@ export function VideoCodeModal({
                 setError(null);
               }}
               maxLength={4}
-              className="w-full px-4 py-3 bg-dark-800 border border-purple-500/50 rounded-lg text-center text-3xl font-mono text-white placeholder-gray-500 focus:border-purple-500 focus:ring-1 focus:ring-purple-500/50 mb-4"
+              className="w-full px-4 py-3 bg-gray-100 dark:bg-dark-800 border border-purple-500/50 rounded-lg text-center text-3xl font-mono text-gray-900 dark:text-white placeholder-gray-500 focus:border-purple-500 focus:ring-1 focus:ring-purple-500/50 mb-4"
             />
 
-            {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
+            {error && <p className="text-red-600 dark:text-red-400 text-sm mb-4">{error}</p>}
 
             <GlowingButton
               onClick={handleVerifyCode}

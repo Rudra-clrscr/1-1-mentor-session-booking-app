@@ -35,15 +35,15 @@ export function SessionFeedbackForm({
   return (
     <GlowingCard glow="green" className="p-6 space-y-6">
       <div>
-        <h3 className="text-2xl font-bold text-white mb-2">Session Feedback</h3>
-        <p className="text-gray-400">
+        <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Session Feedback</h3>
+        <p className="text-gray-600 dark:text-gray-400">
           Help us improve by sharing your experience with this session
         </p>
       </div>
 
       {/* Difficulty Level */}
       <div>
-        <label className="block text-gray-300 font-semibold mb-3">
+        <label className="block text-gray-700 dark:text-gray-300 font-semibold mb-3">
           How would you rate the difficulty?
         </label>
         <div className="grid grid-cols-3 gap-3">
@@ -54,7 +54,7 @@ export function SessionFeedbackForm({
               className={`p-3 rounded-lg font-medium transition ${
                 difficulty === level
                   ? 'bg-primary-600 text-white'
-                  : 'bg-dark-800/50 text-gray-300 hover:bg-dark-800'
+                  : 'bg-gray-100 dark:bg-dark-800/50 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-dark-800'
               }`}
             >
               {level.charAt(0).toUpperCase() + level.slice(1)}
@@ -65,7 +65,7 @@ export function SessionFeedbackForm({
 
       {/* Would Recommend */}
       <div>
-        <label className="block text-gray-300 font-semibold mb-3">
+        <label className="block text-gray-700 dark:text-gray-300 font-semibold mb-3">
           Would you recommend this mentor?
         </label>
         <div className="flex gap-3">
@@ -94,7 +94,7 @@ export function SessionFeedbackForm({
 
       {/* Feedback Text */}
       <div>
-        <label className="block text-gray-300 font-semibold mb-2">
+        <label className="block text-gray-700 dark:text-gray-300 font-semibold mb-2">
           Additional Feedback (Optional)
         </label>
         <textarea
@@ -102,7 +102,7 @@ export function SessionFeedbackForm({
           onChange={(e) => setFeedback(e.target.value)}
           placeholder="Tell us what you liked or could be improved..."
           rows={4}
-          className="w-full px-4 py-3 bg-dark-800/50 border border-gray-700/50 rounded-lg text-white placeholder-gray-500 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all"
+          className="w-full px-4 py-3 bg-gray-50 dark:bg-dark-800/50 border border-gray-200 dark:border-gray-700/50 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all"
         />
       </div>
 

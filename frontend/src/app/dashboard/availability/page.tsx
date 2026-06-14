@@ -175,7 +175,7 @@ export default function AvailabilityPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-dark-950 via-dark-900 to-dark-950 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-dark-950 dark:via-dark-900 dark:to-dark-950 flex items-center justify-center">
         <LoadingSpinner />
       </div>
     );
@@ -183,11 +183,11 @@ export default function AvailabilityPage() {
 
   return (
     <div
-      className="min-h-screen bg-gradient-to-br from-dark-950 via-dark-900 to-dark-950 select-none"
+      className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-dark-950 dark:via-dark-900 dark:to-dark-950 select-none"
       onMouseUp={handleMouseUp}
     >
       {/* ── Header ── */}
-      <header className="border-b border-gray-700/30 backdrop-blur-sm sticky top-0 z-20">
+      <header className="border-b border-gray-200 dark:border-gray-700/30 backdrop-blur-sm sticky top-0 z-20">
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-4">
           <div className="flex justify-between items-center mb-3">
             <h1 className="text-2xl font-bold gradient-text">Availability</h1>
@@ -219,19 +219,19 @@ export default function AvailabilityPage() {
         {/* ── Title + stats ── */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h2 className="text-3xl font-bold text-white mb-1">Weekly Availability 📅</h2>
-            <p className="text-gray-400 text-sm">
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-1">Weekly Availability 📅</h2>
+            <p className="text-gray-600 dark:text-gray-400 text-sm">
               Click or drag to toggle slots. Students will see these times when booking.
             </p>
           </div>
           <div className="flex items-center gap-4">
             <div className="text-center">
               <p className="text-2xl font-bold gradient-text">{totalSlots}</p>
-              <p className="text-xs text-gray-400">slots selected</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">slots selected</p>
             </div>
             <div className="text-center">
               <p className="text-2xl font-bold gradient-text">{totalHours}h</p>
-              <p className="text-xs text-gray-400">per week</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">per week</p>
             </div>
             <GlowingButton
               variant="primary"
@@ -245,22 +245,22 @@ export default function AvailabilityPage() {
         </div>
 
         {error && (
-          <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-red-400 text-sm">
+          <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-red-600 dark:text-red-400 text-sm">
             ⚠️ {error}
           </div>
         )}
 
         {/* ── Legend ── */}
-        <div className="flex gap-4 text-sm text-gray-400">
+        <div className="flex gap-4 text-sm text-gray-600 dark:text-gray-400">
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 rounded bg-gradient-to-br from-purple-500 to-green-500" />
             <span>Available</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-dark-800 border border-gray-700/30" />
+            <div className="w-4 h-4 rounded bg-gray-100 dark:bg-dark-800 border border-gray-300 dark:border-gray-700/30" />
             <span>Unavailable</span>
           </div>
-          <span className="text-gray-600">· Click to toggle · Drag to select multiple</span>
+          <span className="text-gray-500 dark:text-gray-600">· Click to toggle · Drag to select multiple</span>
         </div>
 
         {/* ── Calendar grid ── */}
@@ -268,9 +268,9 @@ export default function AvailabilityPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm border-collapse min-w-[700px]">
               <thead>
-                <tr className="border-b border-gray-700/30">
+                <tr className="border-b border-gray-200 dark:border-gray-700/30">
                   {/* Time column header */}
-                  <th className="w-20 py-3 px-3 text-left text-gray-500 text-xs font-medium sticky left-0 bg-dark-900/80 backdrop-blur z-10">
+                  <th className="w-20 py-3 px-3 text-left text-gray-500 text-xs font-medium sticky left-0 bg-gray-50/80 dark:bg-dark-900/80 backdrop-blur z-10">
                     Time
                   </th>
                   {DAYS.map((day, i) => {
@@ -284,7 +284,7 @@ export default function AvailabilityPage() {
                           className={`w-full rounded-lg py-1.5 px-2 font-semibold text-xs transition-all duration-200
                             ${allActive
                               ? 'bg-gradient-to-br from-purple-500/40 to-green-500/40 text-white border border-purple-500/50'
-                              : 'text-gray-400 hover:text-white hover:bg-white/5'
+                              : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5'
                             }`}
                         >
                           <span className="block">{DAY_SHORT[i]}</span>
@@ -301,9 +301,9 @@ export default function AvailabilityPage() {
               </thead>
               <tbody>
                 {TIME_SLOTS.map((time) => (
-                  <tr key={time} className="group border-b border-gray-700/10 hover:bg-white/[0.02]">
+                  <tr key={time} className="group border-b border-gray-100 dark:border-gray-700/10 hover:bg-gray-50 dark:hover:bg-white/[0.02]">
                     {/* Time label */}
-                    <td className="py-0.5 px-3 text-gray-500 text-[11px] font-mono whitespace-nowrap sticky left-0 bg-dark-900/80 backdrop-blur z-10">
+                    <td className="py-0.5 px-3 text-gray-500 text-[11px] font-mono whitespace-nowrap sticky left-0 bg-gray-50/80 dark:bg-dark-900/80 backdrop-blur z-10">
                       {formatTime(time)}
                     </td>
                     {DAYS.map((_, dayIdx) => {
@@ -317,7 +317,7 @@ export default function AvailabilityPage() {
                             className={`h-7 rounded-md cursor-pointer transition-all duration-150
                               ${isActive
                                 ? 'bg-gradient-to-br from-purple-500/70 to-green-500/50 border border-purple-400/40 shadow-sm shadow-purple-500/20'
-                                : 'bg-dark-800/40 border border-transparent hover:bg-purple-500/10 hover:border-purple-500/20'
+                                : 'bg-gray-100 dark:bg-dark-800/40 border border-transparent hover:bg-purple-500/10 hover:border-purple-500/20'
                               }`}
                           />
                         </td>
@@ -340,14 +340,14 @@ export default function AvailabilityPage() {
                 glow={count > 0 ? 'purple' : 'blue'}
                 className={`text-center py-3 px-2 ${count === 0 ? 'opacity-50' : ''}`}
               >
-                <p className="text-xs text-gray-400 mb-1">{DAY_SHORT[i]}</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">{DAY_SHORT[i]}</p>
                 <p className="text-lg font-bold gradient-text">{(count * 0.5).toFixed(1)}h</p>
               </GlowingCard>
             );
           })}
         </div>
 
-        <p className="text-center text-gray-600 text-xs pb-4">
+        <p className="text-center text-gray-600 dark:text-gray-500 text-xs pb-4">
           Tip: Click a day name to toggle the entire day. Drag across multiple slots to select quickly.
         </p>
       </main>

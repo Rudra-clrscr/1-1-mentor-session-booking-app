@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import * as Y from 'yjs';
 import { MonacoBinding } from 'y-monaco';
+import { useTheme } from 'next-themes';
 import { createNewCollaborativeEditorService } from '@/services/collaborativeEditorService';
 import type { WebsocketProvider } from 'y-websocket';
 
@@ -63,6 +64,14 @@ export const CollaborativeEditor: React.FC<CollaborativeEditorProps> = ({
   const [connectionStatus, setConnectionStatus] = useState('connecting');
   const [remoteUsers, setRemoteUsers] = useState<RemoteUserCursor[]>([]);
   const [localCode, setLocalCode] = useState(initialCode);
+
+  // Sync Monaco's theme with the app's light/dark/system theme
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const editorTheme = mounted
+    ? resolvedTheme === 'light' ? 'vs-light' : 'vs-dark'
+    : theme;
 
   // Initialize collaborative editor service
   useEffect(() => {
@@ -323,8 +332,8 @@ export const CollaborativeEditor: React.FC<CollaborativeEditorProps> = ({
       {/* Connection Status Indicator */}
       <div className={`absolute top-2 right-2 z-50 px-3 py-1 rounded text-sm font-medium flex items-center gap-2 ${
         isConnected
-          ? 'bg-green-500/10 text-green-400'
-          : 'bg-red-500/10 text-red-400'
+          ? 'bg-green-500/10 text-green-600 dark:text-green-400'
+          : 'bg-red-500/10 text-red-600 dark:text-red-400'
       }`}>
         <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-400' : 'bg-red-400'}`} />
         {connectionStatus === 'connecting' && 'Connecting...'}
@@ -335,7 +344,7 @@ export const CollaborativeEditor: React.FC<CollaborativeEditorProps> = ({
       {/* Remote Users Indicator */}
       {remoteUsers.length > 0 && (
         <div className="absolute top-2 left-2 z-50 flex items-center gap-2 bg-black/50 px-3 py-1 rounded text-sm">
-          <span className="text-gray-400">Collaborators:</span>
+          <span className="text-gray-300">Collaborators:</span>
           <div className="flex gap-1">
             {remoteUsers.map((user) => (
               <div
@@ -355,7 +364,7 @@ export const CollaborativeEditor: React.FC<CollaborativeEditorProps> = ({
       <Editor
         height={height}
         defaultLanguage={language}
-        theme={theme}
+        theme={editorTheme}
         value={localCode}
         onMount={handleEditorDidMount}
         options={{
@@ -385,10 +394,10 @@ export const CollaborativeEditor: React.FC<CollaborativeEditorProps> = ({
 
       {/* Loading Indicator */}
       {connectionStatus === 'connecting' && (
-        <div className="absolute inset-0 bg-black/20 flex items-center justify-center rounded pointer-events-none">
+        <div className="absolute inset-0 bg-white/40 dark:bg-black/20 flex items-center justify-center rounded pointer-events-none">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-t-2 border-blue-400 mx-auto mb-2"></div>
-            <p className="text-gray-300 text-sm">Connecting to collaborative session...</p>
+            <p className="text-gray-600 dark:text-gray-300 text-sm">Connecting to collaborative session...</p>
           </div>
         </div>
       )}
@@ -397,7 +406,7 @@ export const CollaborativeEditor: React.FC<CollaborativeEditorProps> = ({
       {connectionStatus === 'error' && (
         <div className="absolute inset-0 bg-red-500/10 flex items-center justify-center rounded pointer-events-none">
           <div className="text-center">
-            <p className="text-red-400 text-sm">⚠️ Connection error. Trying to reconnect...</p>
+            <p className="text-red-600 dark:text-red-400 text-sm">⚠️ Connection error. Trying to reconnect...</p>
           </div>
         </div>
       )}

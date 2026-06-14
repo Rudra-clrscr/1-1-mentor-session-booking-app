@@ -54,8 +54,8 @@ export function SessionRatingModal({
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <GlowingCard glow="purple" className="w-full max-w-md p-6 space-y-6">
         <div>
-          <h3 className="text-2xl font-bold text-white mb-1">Rate Your Session</h3>
-          <p className="text-gray-400">
+          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">Rate Your Session</h3>
+          <p className="text-gray-600 dark:text-gray-400">
             How was your session with <span className="text-secondary-400 font-semibold">{mentorName}</span>?
           </p>
         </div>
@@ -70,7 +70,7 @@ export function SessionRatingModal({
               onMouseEnter={() => setHoverRating(star)}
               onMouseLeave={() => setHoverRating(0)}
               className={`text-4xl transition hover:scale-110 ${
-                star <= (hoverRating || rating) ? 'text-accent-400' : 'text-gray-600'
+                star <= (hoverRating || rating) ? 'text-accent-400' : 'text-gray-300 dark:text-gray-600'
               }`}
               aria-label={`${star} star${star > 1 ? 's' : ''}`}
             >
@@ -81,7 +81,7 @@ export function SessionRatingModal({
 
         {/* Optional Comment */}
         <div>
-          <label className="block text-gray-300 text-sm font-medium mb-2">
+          <label className="block text-gray-700 dark:text-gray-300 text-sm font-medium mb-2">
             Add a comment (optional)
           </label>
           <textarea
@@ -90,14 +90,14 @@ export function SessionRatingModal({
             placeholder="Share your experience with this mentor..."
             rows={4}
             maxLength={MAX_COMMENT_LENGTH}
-            className="w-full px-4 py-3 bg-dark-800/50 border border-gray-700/50 rounded-lg text-white placeholder-gray-500 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all"
+            className="w-full px-4 py-3 bg-gray-50 dark:bg-dark-800/50 border border-gray-200 dark:border-gray-700/50 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all"
           />
           <p className="text-right text-xs text-gray-500 mt-1">
             {comment.length}/{MAX_COMMENT_LENGTH}
           </p>
         </div>
 
-        {error && <p className="text-red-400 text-sm">{error}</p>}
+        {error && <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>}
 
         {/* Actions */}
         <div className="flex flex-col gap-3">
@@ -112,7 +112,7 @@ export function SessionRatingModal({
             type="button"
             onClick={onSkip}
             disabled={submitting}
-            className="text-gray-400 hover:text-white text-sm transition-colors"
+            className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white text-sm transition-colors"
           >
             Skip
           </button>

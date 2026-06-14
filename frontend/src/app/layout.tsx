@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Roboto_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { ThemeProvider } from "@/components/ThemeProvider";
 
 const inter = Inter({
   variable: "--font-sans",
@@ -35,10 +36,17 @@ export default function RootLayout({
       <body
         className={`${inter.variable} ${robotoMono.variable} bg-white text-gray-900 dark:bg-dark-950 dark:text-gray-100 antialiased`}
       >
-        <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-dark-950 dark:via-dark-900 dark:to-dark-950">
-          {children}
-          <ThemeToggle floating />
-        </div>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-dark-950 dark:via-dark-900 dark:to-dark-950">
+            {children}
+            <ThemeToggle floating />
+          </div>
+        </ThemeProvider>
       </body>
     </html>
   );
