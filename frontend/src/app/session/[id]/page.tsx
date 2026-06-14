@@ -11,6 +11,10 @@ import { useSessionStore, useEditorStore, useVideoStore, useAuthStore } from '@/
 import { GlowingButton, GlowingCard, Badge, Avatar } from '@/components/ui/GlowingComponents';
 import { CollaborativeEditor } from '@/components/CollaborativeEditor';
 import { SessionRatingModal } from '@/components/SessionRatingModal';
+import { RecordingConsentModal } from '@/components/RecordingConsentModal';
+import { RecordingIndicator } from '@/components/RecordingIndicator';
+import { RecordingToast } from '@/components/RecordingToast';
+import { useRecorder } from '@/hooks/useRecorder';
 import dynamic from 'next/dynamic';
 
 // Configure Monaco Editor - disable workers to avoid network errors
@@ -63,7 +67,7 @@ export default function SessionPage() {
   } = useSessionStore();
 
   const { code, language, setCode, setLanguage, executionOutput } = useEditorStore();
-  const { isCameraOn, isMicOn } = useVideoStore(); // Remove screen share from global store
+  const { isCameraOn, isMicOn, localStream, setLocalStream } = useVideoStore(); // Remove screen share from global store
   const currentUser = useAuthStore((state) => state.user);
 
   // Ref for video elements
@@ -87,6 +91,30 @@ export default function SessionPage() {
   const [remoteUserName, setRemoteUserName] = useState<string | null>(null);
   const [showDebugInfo, setShowDebugInfo] = useState(false);
   const [pendingStreamCounter, setPendingStreamCounter] = useState(0);
+
+  // Recording state
+  const [showConsentModal, setShowConsentModal] = useState(false);
+  const [consentRequesterName, setConsentRequesterName] = useState('');
+  const [awaitingConsent, setAwaitingConsent] = useState(false);
+  const [recordingToasts, setRecordingToasts] = useState<{ id: number; message: string }[]>([]);
+
+  const {
+    recordingState,
+    isRecording,
+    downloadUrl,
+    downloadFilename,
+    startRecording,
+    stopRecording,
+    revokeDownloadUrl,
+  } = useRecorder(localStream);
+
+  const showRecordingToast = useCallback((message: string) => {
+    const id = Date.now();
+    setRecordingToasts((prev) => [...prev, { id, message }]);
+    setTimeout(() => {
+      setRecordingToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 4000);
+  }, []);
 
   // Setup diagnostics and services in global window (FIRST - before anything else)
   useEffect(() => {
@@ -464,6 +492,8 @@ export default function SessionPage() {
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = localStream;
         }
+        localStreamRef.current = localStream;
+        setLocalStream(localStream);
 
         // Initiate WebRTC connection
         console.log('🔗 Checking if should initiate WebRTC connection...');
@@ -728,6 +758,46 @@ export default function SessionPage() {
       }
     };
   }, [sessionId]);
+
+  // Recording: respond to consent prompts/results from the other participant
+  useEffect(() => {
+    const handleConsentPrompt = ({ requesterName }: { requesterName: string }) => {
+      setConsentRequesterName(requesterName);
+      setShowConsentModal(true);
+    };
+
+    const handleConsentResult = ({ granted }: { granted: boolean }) => {
+      setAwaitingConsent(false);
+      if (granted) {
+        startRecording(sessionId);
+        showRecordingToast('🔴 Recording started');
+      } else {
+        showRecordingToast('Recording declined');
+      }
+    };
+
+    const handleStoppedByPeer = () => {
+      stopRecording();
+      showRecordingToast('Recording stopped by other participant');
+    };
+
+    socketService.on('recording:consent-prompt', handleConsentPrompt);
+    socketService.on('recording:consent-result', handleConsentResult);
+    socketService.on('recording:stopped-by-peer', handleStoppedByPeer);
+
+    return () => {
+      socketService.off('recording:consent-prompt', handleConsentPrompt);
+      socketService.off('recording:consent-result', handleConsentResult);
+      socketService.off('recording:stopped-by-peer', handleStoppedByPeer);
+    };
+  }, [sessionId, startRecording, stopRecording, showRecordingToast]);
+
+  // Revoke the recording object URL whenever it changes or the page unmounts
+  useEffect(() => {
+    return () => {
+      revokeDownloadUrl();
+    };
+  }, [revokeDownloadUrl]);
 
   // Update video element when camera state changes
   useEffect(() => {
@@ -1006,6 +1076,29 @@ export default function SessionPage() {
     }
   };
 
+  const handleRequestRecording = () => {
+    setAwaitingConsent(true);
+    socketService.emit('recording:request', {
+      sessionId,
+      requesterName: currentUser?.name || 'User',
+    });
+  };
+
+  const handleConsentGranted = () => {
+    setShowConsentModal(false);
+    socketService.emit('recording:consent', { sessionId, granted: true });
+  };
+
+  const handleConsentDeclined = () => {
+    setShowConsentModal(false);
+    socketService.emit('recording:consent', { sessionId, granted: false });
+  };
+
+  const handleStopRecording = () => {
+    stopRecording();
+    socketService.emit('recording:stop', { sessionId });
+  };
+
   const handleEndSession = async () => {
     try {
       await apiClient.endSession(sessionId);
@@ -1095,8 +1188,9 @@ export default function SessionPage() {
           </div>
           <div className="flex items-center gap-4">
             <Badge color="purple">{session?.status}</Badge>
-            <GlowingButton 
-              variant="outline" 
+            {isRecording && <RecordingIndicator onStop={handleStopRecording} />}
+            <GlowingButton
+              variant="outline"
               className="text-sm bg-white dark:bg-transparent"
               onClick={handleEndSession}
             >
@@ -1270,15 +1364,42 @@ export default function SessionPage() {
               >
                 {isAudioEnabled ? '🎤' : '🔇'} Audio
               </GlowingButton>
-              <GlowingButton 
-                variant="secondary" 
+              <GlowingButton
+                variant="secondary"
                 className="text-xs flex-1 py-1 md:py-2 min-w-[100px]"
                 onClick={handleToggleScreenShare}
               >
                 {isScreenSharingActive ? '🛑 Stop' : '🖥️ Share'}
               </GlowingButton>
-              <GlowingButton 
-                variant="secondary" 
+              {recordingState === 'idle' && !awaitingConsent && (
+                <GlowingButton
+                  variant="secondary"
+                  className="text-xs flex-1 py-1 md:py-2 min-w-[80px] bg-red-500/20 hover:bg-red-500/30"
+                  onClick={handleRequestRecording}
+                >
+                  🔴 Record
+                </GlowingButton>
+              )}
+              {awaitingConsent && (
+                <GlowingButton
+                  variant="secondary"
+                  disabled
+                  className="text-xs flex-1 py-1 md:py-2 min-w-[80px] opacity-70 cursor-wait"
+                >
+                  ⏳ Waiting...
+                </GlowingButton>
+              )}
+              {downloadUrl && (
+                <a
+                  href={downloadUrl}
+                  download={downloadFilename}
+                  className="flex items-center justify-center text-xs flex-1 py-1 md:py-2 min-w-[80px] px-6 rounded-lg font-semibold transition-all duration-300 bg-gradient-to-r from-secondary-600 to-secondary-500 text-white hover:shadow-glow-green hover:from-secondary-500 hover:to-secondary-400 dark:from-secondary-600 dark:to-secondary-500"
+                >
+                  ⬇️ Download
+                </a>
+              )}
+              <GlowingButton
+                variant="secondary"
                 className="text-xs flex-1 py-1 md:py-2 min-w-[60px] bg-yellow-500/20 hover:bg-yellow-500/30"
                 onClick={() => setShowDebugInfo(!showDebugInfo)}
               >
@@ -1391,6 +1512,28 @@ export default function SessionPage() {
           onSubmit={() => setShowRatingModal(false)}
           onSkip={() => setShowRatingModal(false)}
         />
+      )}
+
+      {/* Recording consent prompt - shown to the participant who received the request */}
+      {showConsentModal && (
+        <RecordingConsentModal
+          requesterName={consentRequesterName}
+          onConsent={handleConsentGranted}
+          onDecline={handleConsentDeclined}
+        />
+      )}
+
+      {/* Recording status toasts */}
+      {recordingToasts.length > 0 && (
+        <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2">
+          {recordingToasts.map((t) => (
+            <RecordingToast
+              key={t.id}
+              message={t.message}
+              onDismiss={() => setRecordingToasts((prev) => prev.filter((x) => x.id !== t.id))}
+            />
+          ))}
+        </div>
       )}
     </div>
   );

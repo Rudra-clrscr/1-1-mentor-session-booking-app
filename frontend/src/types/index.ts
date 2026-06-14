@@ -154,6 +154,14 @@ export interface SocketEvents {
     message: string;
     data?: Record<string, any>;
   };
+
+  // Recording Events
+  'recording:request': { sessionId: string; requesterName: string };
+  'recording:consent-prompt': { requesterName: string };
+  'recording:consent': { sessionId: string; granted: boolean };
+  'recording:consent-result': { granted: boolean };
+  'recording:stop': { sessionId: string };
+  'recording:stopped-by-peer': void;
 }
 
 // Auth Types
