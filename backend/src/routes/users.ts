@@ -5,7 +5,7 @@ import authMiddleware, { AuthRequest } from '@/middleware/auth';
 const router = Router();
 
 // Get all mentors (MUST come before /:id)
-router.get('/mentors', async (req: AuthRequest, res: Response) => {
+router.get('/mentors', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const mentors = await query(
       'SELECT id, email, name, avatar_url, bio, role, avg_rating::float8 as avg_rating, total_sessions FROM users WHERE role = $1 ORDER BY created_at DESC LIMIT 100',
@@ -25,7 +25,7 @@ router.get('/mentors', async (req: AuthRequest, res: Response) => {
 });
 
 // Get all students (MUST come before /:id)
-router.get('/students', async (req: AuthRequest, res: Response) => {
+router.get('/students', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const students = await query(
       'SELECT id, email, name, avatar_url, bio FROM users WHERE role = $1 LIMIT 50',
@@ -66,7 +66,7 @@ router.put('/profile', authMiddleware, async (req: AuthRequest, res: Response) =
 });
 
 // Get user profile by ID
-router.get('/:id', async (req: AuthRequest, res: Response) => {
+router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const user = await queryOne(
       'SELECT id, email, name, role, avatar_url, bio, verified, avg_rating::float8 as avg_rating, total_sessions FROM users WHERE id = $1',
@@ -88,7 +88,7 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
 });
 
 // Get all users (backward compatibility)
-router.get('/', async (req: AuthRequest, res: Response) => {
+router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const mentors = await query(
       'SELECT id, email, name, avatar_url, bio FROM users WHERE role = $1 LIMIT 50',

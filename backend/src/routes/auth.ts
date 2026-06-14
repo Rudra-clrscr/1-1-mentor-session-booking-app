@@ -25,6 +25,11 @@ router.post('/signup',  async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: 'Password must be at least 8 characters long' });
     }
 
+    // Validate role - never trust client input blindly
+    if (!['mentor', 'student'].includes(role)) {
+      return res.status(400).json({ error: "Invalid role. Must be 'mentor' or 'student'." });
+    }
+
     // Check if user exists
     const existing = await queryOne(
       'SELECT id FROM users WHERE email = $1',
