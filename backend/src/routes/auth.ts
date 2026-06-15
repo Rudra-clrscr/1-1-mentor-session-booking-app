@@ -1,17 +1,36 @@
 import { Router, Response } from 'express';
 import jwt, { Secret, SignOptions } from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
+import rateLimit from 'express-rate-limit';
 import { query, queryOne } from '@/database';
 import authMiddleware, { AuthRequest } from '@/middleware/auth';
 import { config } from '@/config';
 import { v4 as uuidv4 } from 'uuid';
+
+// Rate limiter for login: 10 attempts per 15 minutes per IP
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,  // Return RateLimit-* headers (RFC 6585)
+  legacyHeaders: false,
+  message: { error: 'Too many login attempts. Please try again after 15 minutes.' },
+});
+
+// Rate limiter for signup: 5 accounts per hour per IP
+const signupLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many accounts created from this IP. Please try again after an hour.' },
+});
 
 const router = Router();
 const jwtSecret: Secret = config.JWT_SECRET as Secret;
 const jwtOptions: SignOptions = { expiresIn: config.JWT_EXPIRY as any };
 
 // Signup
-router.post('/signup',  async (req: AuthRequest, res: Response) => {
+router.post('/signup', signupLimiter, async (req: AuthRequest, res: Response) => {
   try {
     const { email, password, name, role } = req.body;
 
@@ -85,7 +104,7 @@ router.post('/signup',  async (req: AuthRequest, res: Response) => {
 });
 
 // Login
-router.post('/login', async (req: AuthRequest, res: Response) => {
+router.post('/login', loginLimiter, async (req: AuthRequest, res: Response) => {
   try {
     const { email, password } = req.body;
 
