@@ -69,7 +69,7 @@ router.put('/profile', authMiddleware, async (req: AuthRequest, res: Response) =
 router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const user = await queryOne(
-      'SELECT id, email, name, role, avatar_url, bio, verified, avg_rating::float8 as avg_rating, total_sessions FROM users WHERE id = $1',
+      'SELECT id, email, name, role, avatar_url, bio, verified, created_at, avg_rating::float8 as avg_rating, total_sessions FROM users WHERE id = $1',
       [req.params.id]
     );
 
