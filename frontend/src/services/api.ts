@@ -81,6 +81,13 @@ class ApiClient {
     return this.client.post(`/sessions/${id}/end`);
   }
 
+  async cancelSession(
+    id: string,
+    reason?: string
+  ): Promise<ApiResponse<{ sessionId: string; status: string; cancelledBy: string; cancelledAt: string }>> {
+    return this.client.post(`/sessions/${id}/cancel`, { reason });
+  }
+
   async getActiveSessions(): Promise<ApiResponse<Session[]>> {
     return this.client.get('/sessions/active');
   }

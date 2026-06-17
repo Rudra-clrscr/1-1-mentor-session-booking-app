@@ -6,12 +6,14 @@ import { useAuth } from '@/hooks/useAuth';
 import { apiClient } from '@/services/api';
 import { Session, User } from '@/types';
 import { GlowingButton, GlowingCard, Badge, Avatar, LoadingSpinner } from '@/components/ui/GlowingComponents';
+import CancelSessionButton from '@/components/CancelSessionButton';
 
 export default function DashboardPage() {
   const { user, logout, isLoading: authLoading } = useAuth();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [mentors, setMentors] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
+  const [cancelledNotice, setCancelledNotice] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -145,6 +147,18 @@ export default function DashboardPage() {
         {/* Sessions */}
         <div className="mb-6 md:mb-8">
           <h3 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white mb-3 md:mb-4">My Sessions</h3>
+          {cancelledNotice && (
+            <div className="mb-4 p-3 rounded-lg bg-green-100 dark:bg-green-900/30 border border-green-300 dark:border-green-700/50 text-green-800 dark:text-green-300 text-sm flex justify-between items-center">
+              <span>{cancelledNotice}</span>
+              <button
+                type="button"
+                onClick={() => setCancelledNotice(null)}
+                className="ml-4 text-green-700 dark:text-green-400 hover:opacity-70"
+              >
+                ✕
+              </button>
+            </div>
+          )}
           {loading ? (
             <div className="flex justify-center py-8">
               <LoadingSpinner />
@@ -169,6 +183,16 @@ export default function DashboardPage() {
                       </GlowingButton>
                     </Link>
                   </div>
+                  {session.status === 'scheduled' && (
+                    <CancelSessionButton
+                      sessionId={session.id}
+                      scheduledAt={session.scheduled_at}
+                      onCancelled={() => {
+                        setSessions((prev) => prev.filter((s) => s.id !== session.id));
+                        setCancelledNotice('Session cancelled. Both participants have been notified.');
+                      }}
+                    />
+                  )}
                 </GlowingCard>
               ))}
             </div>
