@@ -4,6 +4,7 @@ import { query, queryOne, transaction } from '@/database';
 import authMiddleware, { AuthRequest } from '@/middleware/auth';
 import { requireRole } from '@/middleware/requireRole';
 import { v4 as uuidv4 } from 'uuid';
+import { sendEmail } from '@/services/emailService';
 
 class HttpError extends Error {
   constructor(public statusCode: number, message: string) {
@@ -452,6 +453,144 @@ router.post('/:id/verify-video-code', authMiddleware, async (req: AuthRequest, r
       error: 'Failed to verify video code',
       details: err instanceof Error ? err.message : String(err)
     });
+  }
+});
+
+function buildCancellationEmailHTML(params: {
+  recipientName: string;
+  cancellerName: string;
+  sessionTitle: string;
+  reason?: string;
+}): string {
+  const { recipientName, cancellerName, sessionTitle, reason } = params;
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Session Cancelled</title>
+  <style>
+    body{margin:0;padding:0;background:#0f0f13;font-family:'Segoe UI',Arial,sans-serif;color:#e2e8f0}
+    .wrap{max-width:600px;margin:0 auto;padding:32px 16px}
+    .card{background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);border-radius:16px;border:1px solid rgba(239,68,68,.3);overflow:hidden}
+    .hdr{background:linear-gradient(135deg,#dc2626 0%,#991b1b 100%);padding:32px 40px;text-align:center}
+    .hdr h1{margin:0;font-size:24px;color:#fff;font-weight:700}
+    .body{padding:32px 40px}
+    .sc{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:20px 24px;margin:20px 0}
+    .lbl{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#ef4444;font-weight:600;margin-bottom:4px}
+    .val{font-size:15px;color:#f1f5f9;margin-bottom:14px}
+    .val:last-child{margin-bottom:0}
+    .ftr{text-align:center;padding:20px 40px;font-size:12px;color:#64748b;border-top:1px solid rgba(255,255,255,.05)}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div class="hdr"><h1>❌ Session Cancelled</h1></div>
+      <div class="body">
+        <p style="font-size:18px;font-weight:600;color:#fff;margin-bottom:16px">Hello, ${recipientName}!</p>
+        <p style="color:#94a3b8;font-size:14px;line-height:1.6">
+          <strong style="color:#e2e8f0">${cancellerName}</strong> has cancelled the following session:
+        </p>
+        <div class="sc">
+          <div class="lbl">Session</div>
+          <div class="val">${sessionTitle}</div>
+          ${reason ? `<div class="lbl">Reason</div><div class="val">${reason}</div>` : ''}
+        </div>
+        <p style="color:#64748b;font-size:13px;text-align:center">
+          Both participants have been notified. You can browse other sessions from your dashboard.
+        </p>
+      </div>
+      <div class="ftr"><p>© ${new Date().getFullYear()} MentorConnect. All rights reserved.</p></div>
+    </div>
+  </div>
+</body>
+</html>`.trim();
+}
+
+// Cancel session (mentor or student who is a participant)
+router.post('/:id/cancel', authMiddleware, async (req: AuthRequest, res: Response) => {
+  const { id } = req.params;
+  const userId = req.user?.id;
+  const { reason } = req.body as { reason?: string };
+  const minNoticeHours = parseInt(process.env.MIN_CANCEL_NOTICE_HOURS ?? '2', 10);
+
+  try {
+    const session = await queryOne(
+      `SELECT id, mentor_id, student_id, status, scheduled_at, title FROM sessions WHERE id = $1`,
+      [id]
+    );
+
+    if (!session) {
+      return res.status(404).json({ error: 'Session not found' });
+    }
+
+    if (session.mentor_id !== userId && session.student_id !== userId) {
+      return res.status(403).json({ error: 'You are not a participant in this session' });
+    }
+
+    if (session.status !== 'scheduled') {
+      return res.status(400).json({
+        error: `Cannot cancel a session with status '${session.status}'`,
+      });
+    }
+
+    if (session.scheduled_at) {
+      const hoursUntil =
+        (new Date(session.scheduled_at as string).getTime() - Date.now()) / (1000 * 60 * 60);
+      if (hoursUntil < minNoticeHours) {
+        return res.status(400).json({
+          error: `Sessions must be cancelled at least ${minNoticeHours} hours before they start`,
+        });
+      }
+    }
+
+    const now = new Date().toISOString();
+    await query(
+      `UPDATE sessions
+       SET status = 'cancelled', cancelled_by = $1, cancellation_reason = $2,
+           cancelled_at = $3, updated_at = $4
+       WHERE id = $5`,
+      [userId, reason ?? null, now, now, id]
+    );
+
+    // Fetch participants for email notifications
+    const participantIds = [session.mentor_id, session.student_id].filter(Boolean) as string[];
+    const usersRes = await query(
+      `SELECT id, name, email FROM users WHERE id = ANY($1::uuid[])`,
+      [participantIds]
+    );
+    const participants = usersRes.rows as { id: string; name: string; email: string }[];
+    const cancellerName = participants.find((p) => p.id === userId)?.name ?? 'A participant';
+
+    for (const p of participants) {
+      await sendEmail(
+        p.email,
+        `Session Cancelled: "${session.title as string}"`,
+        buildCancellationEmailHTML({
+          recipientName: p.name,
+          cancellerName,
+          sessionTitle: session.title as string,
+          reason,
+        })
+      );
+    }
+
+    // Emit socket events to both participants and the session room
+    if (io) {
+      const payload = { sessionId: id, cancelledBy: userId, reason: reason ?? null };
+      if (session.mentor_id) io.to(session.mentor_id as string).emit('session:cancelled', payload);
+      if (session.student_id) io.to(session.student_id as string).emit('session:cancelled', payload);
+      io.to(`session:${id}`).emit('session:cancelled', payload);
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: { sessionId: id, status: 'cancelled', cancelledBy: userId, cancelledAt: now },
+    });
+  } catch (err) {
+    console.error('Cancel session error:', err);
+    return res.status(500).json({ error: 'Failed to cancel session' });
   }
 });
 
