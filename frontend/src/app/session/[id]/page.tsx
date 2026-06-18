@@ -10,7 +10,7 @@ import { webrtcDiagnostics } from '@/services/webrtcDiagnostics';
 import { useSessionStore, useEditorStore, useVideoStore, useAuthStore } from '@/store';
 import { GlowingButton, GlowingCard, Badge, Avatar } from '@/components/ui/GlowingComponents';
 import { CollaborativeEditor } from '@/components/CollaborativeEditor';
-import { SessionRatingModal } from '@/components/SessionRatingModal';
+import { PostSessionFeedbackModal } from '@/components/PostSessionFeedbackModal';
 import { RecordingConsentModal } from '@/components/RecordingConsentModal';
 import { RecordingIndicator } from '@/components/RecordingIndicator';
 import { RecordingToast } from '@/components/RecordingToast';
@@ -56,6 +56,7 @@ export default function SessionPage() {
   const [cameraError, setCameraError] = useState<string>('');
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [ratingMentorName, setRatingMentorName] = useState('your mentor');
+  const [ratingMentorAvatar, setRatingMentorAvatar] = useState<string | undefined>(undefined);
   const messageEndRef = useRef<HTMLDivElement>(null);
   const listenerRef = useRef<any>(null);
 
@@ -550,6 +551,7 @@ export default function SessionPage() {
       if (!ratingRes.data) {
         const mentorRes = await apiClient.getUser(sessionData.mentor_id);
         setRatingMentorName(mentorRes.data?.name || 'your mentor');
+        setRatingMentorAvatar(mentorRes.data?.avatar_url ?? undefined);
         setShowRatingModal(true);
       }
     } catch (err) {
@@ -1505,14 +1507,13 @@ export default function SessionPage() {
       )}
 
       {/* Post-session rating prompt (student view only) */}
-      {showRatingModal && (
-        <SessionRatingModal
-          sessionId={sessionId}
-          mentorName={ratingMentorName}
-          onSubmit={() => setShowRatingModal(false)}
-          onSkip={() => setShowRatingModal(false)}
-        />
-      )}
+      <PostSessionFeedbackModal
+        isOpen={showRatingModal}
+        sessionId={sessionId}
+        mentorName={ratingMentorName}
+        mentorAvatar={ratingMentorAvatar}
+        onClose={() => setShowRatingModal(false)}
+      />
 
       {/* Recording consent prompt - shown to the participant who received the request */}
       {showConsentModal && (
