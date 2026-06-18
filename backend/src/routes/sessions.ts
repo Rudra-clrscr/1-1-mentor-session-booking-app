@@ -1,9 +1,16 @@
 import { Router, Response } from 'express';
 import { Server as SocketIOServer } from 'socket.io';
-import { query, queryOne } from '@/database';
+import { query, queryOne, transaction } from '@/database';
 import authMiddleware, { AuthRequest } from '@/middleware/auth';
 import { requireRole } from '@/middleware/requireRole';
 import { v4 as uuidv4 } from 'uuid';
+
+class HttpError extends Error {
+  constructor(public statusCode: number, message: string) {
+    super(message);
+    this.name = 'HttpError';
+  }
+}
 
 const router = Router();
 
@@ -140,51 +147,57 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
 router.post('/:id/join', authMiddleware, requireRole('student'), async (req: AuthRequest, res: Response) => {
   try {
     const now = new Date().toISOString();
+    const studentId = req.user?.id;
 
-    const session = await queryOne('SELECT * FROM sessions WHERE id = $1', [req.params.id]);
+    const sessionData = await transaction(async (client) => {
+      // Lock the row exclusively — concurrent requests for the same session block here
+      // until this transaction commits or rolls back, eliminating the TOCTOU race.
+      const lockResult = await client.query(
+        'SELECT * FROM sessions WHERE id = $1 FOR UPDATE',
+        [req.params.id]
+      );
 
-    if (!session) {
-      return res.status(404).json({ error: 'Session not found' });
-    }
+      if (lockResult.rows.length === 0) {
+        throw new HttpError(404, 'Session not found');
+      }
 
-    // Mentors cannot join their own sessions
-    if (session.mentor_id === req.user?.id) {
-      return res.status(400).json({ error: 'Mentors cannot join their own sessions' });
-    }
+      const session = lockResult.rows[0];
 
-    // Session must be in scheduled or confirmed status to be joinable
-    if (session.status === 'completed' || session.status === 'cancelled') {
-      return res.status(400).json({ error: 'This session is no longer available to join' });
-    }
+      if (session.mentor_id === studentId) {
+        throw new HttpError(400, 'Mentors cannot join their own sessions');
+      }
 
-    // If already joined by this student, return success directly
-    if (session.student_id === req.user?.id) {
-      return res.json({
-        success: true,
-        data: session,
-      });
-    }
+      if (session.status === 'completed' || session.status === 'cancelled') {
+        throw new HttpError(400, 'This session is no longer available to join');
+      }
 
-    // Prevent hijacking if session is already joined by someone else
-    if (session.student_id && session.student_id !== req.user?.id) {
-      return res.status(400).json({ error: 'This session has already been joined by another student' });
-    }
+      if (session.student_id === studentId) {
+        return session;
+      }
 
-    // Update session with student_id and change status
-    await query(
-      'UPDATE sessions SET student_id = $1, status = $2, started_at = $3, updated_at = $4 WHERE id = $5',
-      [req.user?.id, 'in_progress', now, now, req.params.id]
-    );
+      if (session.student_id) {
+        throw new HttpError(409, 'This session has already been joined by another student');
+      }
 
-    const updatedSession = await queryOne('SELECT * FROM sessions WHERE id = $1', [req.params.id]);
+      await client.query(
+        'UPDATE sessions SET student_id = $1, status = $2, started_at = $3, updated_at = $4 WHERE id = $5',
+        [studentId, 'in_progress', now, now, req.params.id]
+      );
 
-    res.json({
-      success: true,
-      data: updatedSession,
+      const updated = await client.query('SELECT * FROM sessions WHERE id = $1', [req.params.id]);
+      return updated.rows[0];
     });
-  } catch (err) {
+
+    return res.json({
+      success: true,
+      data: sessionData,
+    });
+  } catch (err: unknown) {
+    if (err instanceof HttpError) {
+      return res.status(err.statusCode).json({ error: err.message });
+    }
     console.error('Join session error:', err);
-    res.status(500).json({ error: 'Failed to join session' });
+    return res.status(500).json({ error: 'Failed to join session' });
   }
 });
 
