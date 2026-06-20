@@ -16,6 +16,7 @@ export default function CreateSessionPage() {
     duration_minutes: 60,
     language: 'javascript',
     code_language: 'javascript',
+    recording_enabled: false,
   });
 
   const handleChange = (
@@ -144,6 +145,21 @@ export default function CreateSessionPage() {
               <option value="cpp" className="bg-white dark:bg-dark-900 text-gray-900 dark:text-white">C++</option>
               <option value="csharp" className="bg-white dark:bg-dark-900 text-gray-900 dark:text-white">C#</option>
             </GlowingSelect>
+
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.recording_enabled}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, recording_enabled: e.target.checked }))
+                }
+                disabled={loading}
+                className="w-4 h-4 accent-primary-500"
+              />
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Record code-editor activity for playback after the session
+              </span>
+            </label>
 
             <div className="grid grid-cols-2 gap-4 pt-6">
               <GlowingButton

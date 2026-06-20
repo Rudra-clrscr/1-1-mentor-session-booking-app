@@ -25,7 +25,7 @@ export function setSocketIO(socketIO: SocketIOServer) {
 // Create session (mentor only)
 router.post('/', authMiddleware, requireRole('mentor'), async (req: AuthRequest, res: Response) => {
   try {
-    const { title, description, topic, scheduled_at, duration_minutes, language, code_language } =
+    const { title, description, topic, scheduled_at, duration_minutes, language, code_language, recording_enabled } =
       req.body;
 
     const sessionId = uuidv4();
@@ -34,8 +34,8 @@ router.post('/', authMiddleware, requireRole('mentor'), async (req: AuthRequest,
     const sessionScheduledAt = scheduled_at || now;
 
     await query(
-      `INSERT INTO sessions (id, mentor_id, title, description, topic, status, scheduled_at, duration_minutes, language, code_language, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, 'scheduled', $6, $7, $8, $9, $10, $11)`,
+      `INSERT INTO sessions (id, mentor_id, title, description, topic, status, scheduled_at, duration_minutes, language, code_language, recording_enabled, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, 'scheduled', $6, $7, $8, $9, $10, $11, $12)`,
       [
         sessionId,
         req.user?.id,
@@ -46,6 +46,7 @@ router.post('/', authMiddleware, requireRole('mentor'), async (req: AuthRequest,
         duration_minutes || 60,
         language || 'javascript',
         code_language || 'javascript',
+        recording_enabled === true,
         now,
         now,
       ]

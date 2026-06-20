@@ -134,6 +134,13 @@ class ApiClient {
     return this.client.post(`/code/${sessionId}`, { code, language });
   }
 
+  async getCodeRecordingHistory(sessionId: string): Promise<ApiResponse<{
+    session: { id: string; title: string; code_language?: string; started_at?: string; ended_at?: string };
+    events: { code: string; language: string; user_id: string; saved_at: string }[];
+  }>> {
+    return this.client.get(`/code/${sessionId}/history`);
+  }
+
   // Code Execution
   async executeCode(code: string, language: string, sessionId?: string): Promise<ApiResponse<{ output: string; error?: string }>> {
     return this.client.post('/code/execute', { code, language, sessionId });

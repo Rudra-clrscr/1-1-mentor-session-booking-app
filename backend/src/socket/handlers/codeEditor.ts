@@ -26,13 +26,17 @@ export async function handleCodeUpdate(socket: Socket, io: SocketIOServer, data:
     console.log('📤 Broadcasting code to session:', roomName, codeData);
     socket.to(roomName).emit('code:update', codeData);
 
-    // Save code snapshot
+    // Save code snapshot — only when the mentor opted in to recording for this
+    // session, so editor activity isn't persisted without consent.
     try {
-      await query(
-        `INSERT INTO code_snapshots (session_id, code, language, user_id, saved_at)
-         VALUES ($1, $2, $3, $4, NOW())`,
-        [sessionId, code, language, userId]
-      );
+      const session = await queryOne('SELECT recording_enabled FROM sessions WHERE id = $1', [sessionId]);
+      if (session?.recording_enabled) {
+        await query(
+          `INSERT INTO code_snapshots (session_id, code, language, user_id, saved_at)
+           VALUES ($1, $2, $3, $4, NOW())`,
+          [sessionId, code, language, userId]
+        );
+      }
     } catch (err) {
       console.error('Error saving code snapshot:', err);
     }

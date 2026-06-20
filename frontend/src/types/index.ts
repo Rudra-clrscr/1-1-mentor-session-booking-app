@@ -38,6 +38,7 @@ export interface Session {
   duration_minutes?: number;
   language: string;
   code_language?: string;
+  recording_enabled?: boolean;
   created_at: string;
   updated_at: string;
 }

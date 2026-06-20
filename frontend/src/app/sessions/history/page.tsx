@@ -180,6 +180,13 @@ export default function SessionHistoryPage() {
                             View
                           </GlowingButton>
                         </Link>
+                        {session.status === 'completed' && session.recording_enabled && (
+                          <Link href={`/sessions/history/${session.id}/recording`}>
+                            <GlowingButton variant="outline" className="text-sm py-2">
+                              ▶ Code Playback
+                            </GlowingButton>
+                          </Link>
+                        )}
                       </div>
                     </div>
 

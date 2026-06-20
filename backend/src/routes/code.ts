@@ -430,6 +430,60 @@ router.post('/:sessionId', authMiddleware, async (req: AuthRequest, res: Respons
   }
 });
 
+/**
+ * Get the full ordered code-editor activity recording for playback.
+ * Only available once the session has completed and recording was opted into.
+ */
+router.get('/:sessionId/history', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    const session = await queryOne(
+      'SELECT id, mentor_id, student_id, status, recording_enabled, started_at, ended_at, title, code_language FROM sessions WHERE id = $1',
+      [req.params.sessionId]
+    );
+
+    if (!session) {
+      return res.status(404).json({ error: 'Session not found' });
+    }
+
+    if (session.mentor_id !== userId && session.student_id !== userId) {
+      return res.status(403).json({ error: 'You are not a participant in this session' });
+    }
+
+    if (!session.recording_enabled) {
+      return res.status(404).json({ error: 'Recording was not enabled for this session' });
+    }
+
+    if (session.status !== 'completed') {
+      return res.status(400).json({ error: 'Recording is only available once the session has ended' });
+    }
+
+    const events = await query(
+      `SELECT code, language, user_id, saved_at
+       FROM code_snapshots WHERE session_id = $1
+       ORDER BY saved_at ASC`,
+      [req.params.sessionId]
+    );
+
+    res.json({
+      success: true,
+      data: {
+        session: {
+          id: session.id,
+          title: session.title,
+          code_language: session.code_language,
+          started_at: session.started_at,
+          ended_at: session.ended_at,
+        },
+        events: events.rows,
+      },
+    });
+  } catch (err) {
+    console.error('Get code recording history error:', err);
+    res.status(500).json({ error: 'Failed to get code recording history' });
+  }
+});
+
 
 /**
  * List available languages from Glot.io API (PUBLIC - no auth needed)
