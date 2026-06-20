@@ -1,0 +1,3 @@
+-- Migration: add per-user opt-out preference for email notifications
+ALTER TABLE users
+  ADD COLUMN IF NOT EXISTS email_notifications_enabled BOOLEAN NOT NULL DEFAULT TRUE;

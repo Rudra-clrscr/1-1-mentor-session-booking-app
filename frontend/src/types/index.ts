@@ -13,6 +13,7 @@ export interface User {
   updated_at: string;
   avg_rating?: number;
   total_sessions?: number;
+  email_notifications_enabled?: boolean;
 }
 
 export interface UserProfile extends User {

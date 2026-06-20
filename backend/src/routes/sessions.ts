@@ -150,7 +150,7 @@ router.post('/:id/join', authMiddleware, requireRole('student'), async (req: Aut
     const now = new Date().toISOString();
     const studentId = req.user?.id;
 
-    const sessionData = await transaction(async (client) => {
+    const { session: sessionData, justBooked } = await transaction(async (client) => {
       // Lock the row exclusively — concurrent requests for the same session block here
       // until this transaction commits or rolls back, eliminating the TOCTOU race.
       const lockResult = await client.query(
@@ -173,7 +173,7 @@ router.post('/:id/join', authMiddleware, requireRole('student'), async (req: Aut
       }
 
       if (session.student_id === studentId) {
-        return session;
+        return { session, justBooked: false };
       }
 
       if (session.student_id) {
@@ -186,8 +186,34 @@ router.post('/:id/join', authMiddleware, requireRole('student'), async (req: Aut
       );
 
       const updated = await client.query('SELECT * FROM sessions WHERE id = $1', [req.params.id]);
-      return updated.rows[0];
+      return { session: updated.rows[0], justBooked: true };
     });
+
+    // Send booking confirmation emails to both participants once, on the actual booking
+    // transition (not on idempotent re-joins of an already-booked session).
+    if (justBooked) {
+      const participants = await query(
+        `SELECT id, name, email, email_notifications_enabled FROM users WHERE id = ANY($1::uuid[])`,
+        [[sessionData.mentor_id, sessionData.student_id]]
+      );
+      const joinLink = `${process.env.CLIENT_URL}/session/${sessionData.id}`;
+      for (const p of participants.rows as { id: string; name: string; email: string; email_notifications_enabled: boolean }[]) {
+        if (p.email_notifications_enabled === false) continue;
+        const otherParty = participants.rows.find((u: any) => u.id !== p.id);
+        await sendEmail(
+          p.email,
+          `Session Confirmed: "${sessionData.title as string}"`,
+          buildBookingConfirmationEmailHTML({
+            recipientName: p.name,
+            otherPartyName: otherParty?.name ?? 'Your session partner',
+            sessionTitle: sessionData.title as string,
+            sessionTopic: sessionData.topic as string | undefined,
+            scheduledAt: sessionData.scheduled_at as string | undefined,
+            joinLink,
+          })
+        );
+      }
+    }
 
     return res.json({
       success: true,
@@ -226,6 +252,28 @@ router.post('/:id/end', authMiddleware, requireRole('mentor'), async (req: AuthR
     );
 
     const updatedSession = await queryOne('SELECT * FROM sessions WHERE id = $1', [req.params.id]);
+
+    // Notify participants the session ended and invite feedback (best-effort, opt-out respected)
+    const participantIds = [session.mentor_id, session.student_id].filter(Boolean) as string[];
+    const participants = await query(
+      `SELECT id, name, email, email_notifications_enabled FROM users WHERE id = ANY($1::uuid[])`,
+      [participantIds]
+    );
+    const feedbackLink = `${process.env.CLIENT_URL}/sessions/history/${req.params.id}`;
+    for (const p of participants.rows as { id: string; name: string; email: string; email_notifications_enabled: boolean }[]) {
+      if (p.email_notifications_enabled === false) continue;
+      const otherParty = participants.rows.find((u: any) => u.id !== p.id);
+      await sendEmail(
+        p.email,
+        `Session Completed: "${session.title as string}"`,
+        buildSessionEndedEmailHTML({
+          recipientName: p.name,
+          otherPartyName: otherParty?.name ?? 'your session partner',
+          sessionTitle: session.title as string,
+          feedbackLink,
+        })
+      );
+    }
 
     res.json({
       success: true,
@@ -508,6 +556,110 @@ function buildCancellationEmailHTML(params: {
 </html>`.trim();
 }
 
+function buildBookingConfirmationEmailHTML(params: {
+  recipientName: string;
+  otherPartyName: string;
+  sessionTitle: string;
+  sessionTopic?: string;
+  scheduledAt?: string;
+  joinLink: string;
+}): string {
+  const { recipientName, otherPartyName, sessionTitle, sessionTopic, scheduledAt, joinLink } = params;
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Session Confirmed</title>
+  <style>
+    body{margin:0;padding:0;background:#0f0f13;font-family:'Segoe UI',Arial,sans-serif;color:#e2e8f0}
+    .wrap{max-width:600px;margin:0 auto;padding:32px 16px}
+    .card{background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);border-radius:16px;border:1px solid rgba(34,197,94,.3);overflow:hidden}
+    .hdr{background:linear-gradient(135deg,#16a34a 0%,#15803d 100%);padding:32px 40px;text-align:center}
+    .hdr h1{margin:0;font-size:24px;color:#fff;font-weight:700}
+    .body{padding:32px 40px}
+    .sc{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:20px 24px;margin:20px 0}
+    .lbl{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#22c55e;font-weight:600;margin-bottom:4px}
+    .val{font-size:15px;color:#f1f5f9;margin-bottom:14px}
+    .val:last-child{margin-bottom:0}
+    .btn{display:block;width:fit-content;margin:28px auto;background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;text-decoration:none;font-size:16px;font-weight:700;padding:14px 36px;border-radius:10px;text-align:center}
+    .ftr{text-align:center;padding:20px 40px;font-size:12px;color:#64748b;border-top:1px solid rgba(255,255,255,.05)}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div class="hdr"><h1>✅ Session Confirmed</h1></div>
+      <div class="body">
+        <p style="font-size:18px;font-weight:600;color:#fff;margin-bottom:16px">Hello, ${recipientName}!</p>
+        <p style="color:#94a3b8;font-size:14px;line-height:1.6">
+          Your session with <strong style="color:#e2e8f0">${otherPartyName}</strong> is booked.
+        </p>
+        <div class="sc">
+          <div class="lbl">Session</div>
+          <div class="val">${sessionTitle}</div>
+          ${sessionTopic ? `<div class="lbl">Topic</div><div class="val">${sessionTopic}</div>` : ''}
+          ${scheduledAt ? `<div class="lbl">Scheduled Time</div><div class="val">${new Date(scheduledAt).toLocaleString()}</div>` : ''}
+        </div>
+        <a href="${joinLink}" class="btn">🚀 View Session</a>
+      </div>
+      <div class="ftr"><p>© ${new Date().getFullYear()} MentorConnect. All rights reserved.</p></div>
+    </div>
+  </div>
+</body>
+</html>`.trim();
+}
+
+function buildSessionEndedEmailHTML(params: {
+  recipientName: string;
+  otherPartyName: string;
+  sessionTitle: string;
+  feedbackLink: string;
+}): string {
+  const { recipientName, otherPartyName, sessionTitle, feedbackLink } = params;
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Session Completed</title>
+  <style>
+    body{margin:0;padding:0;background:#0f0f13;font-family:'Segoe UI',Arial,sans-serif;color:#e2e8f0}
+    .wrap{max-width:600px;margin:0 auto;padding:32px 16px}
+    .card{background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);border-radius:16px;border:1px solid rgba(139,92,246,.3);overflow:hidden}
+    .hdr{background:linear-gradient(135deg,#8B5CF6 0%,#6D28D9 100%);padding:32px 40px;text-align:center}
+    .hdr h1{margin:0;font-size:24px;color:#fff;font-weight:700}
+    .body{padding:32px 40px}
+    .sc{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:20px 24px;margin:20px 0}
+    .lbl{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#8B5CF6;font-weight:600;margin-bottom:4px}
+    .val{font-size:15px;color:#f1f5f9;margin-bottom:14px}
+    .val:last-child{margin-bottom:0}
+    .btn{display:block;width:fit-content;margin:28px auto;background:linear-gradient(135deg,#8B5CF6,#6D28D9);color:#fff;text-decoration:none;font-size:16px;font-weight:700;padding:14px 36px;border-radius:10px;text-align:center}
+    .ftr{text-align:center;padding:20px 40px;font-size:12px;color:#64748b;border-top:1px solid rgba(255,255,255,.05)}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div class="hdr"><h1>🎉 Session Completed</h1></div>
+      <div class="body">
+        <p style="font-size:18px;font-weight:600;color:#fff;margin-bottom:16px">Hello, ${recipientName}!</p>
+        <p style="color:#94a3b8;font-size:14px;line-height:1.6">
+          Your session with <strong style="color:#e2e8f0">${otherPartyName}</strong> has ended.
+        </p>
+        <div class="sc">
+          <div class="lbl">Session</div>
+          <div class="val">${sessionTitle}</div>
+        </div>
+        <a href="${feedbackLink}" class="btn">⭐ Leave Feedback</a>
+      </div>
+      <div class="ftr"><p>© ${new Date().getFullYear()} MentorConnect. All rights reserved.</p></div>
+    </div>
+  </div>
+</body>
+</html>`.trim();
+}
+
 // Cancel session (mentor or student who is a participant)
 router.post('/:id/cancel', authMiddleware, async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
@@ -557,13 +709,14 @@ router.post('/:id/cancel', authMiddleware, async (req: AuthRequest, res: Respons
     // Fetch participants for email notifications
     const participantIds = [session.mentor_id, session.student_id].filter(Boolean) as string[];
     const usersRes = await query(
-      `SELECT id, name, email FROM users WHERE id = ANY($1::uuid[])`,
+      `SELECT id, name, email, email_notifications_enabled FROM users WHERE id = ANY($1::uuid[])`,
       [participantIds]
     );
-    const participants = usersRes.rows as { id: string; name: string; email: string }[];
+    const participants = usersRes.rows as { id: string; name: string; email: string; email_notifications_enabled: boolean }[];
     const cancellerName = participants.find((p) => p.id === userId)?.name ?? 'A participant';
 
     for (const p of participants) {
+      if (p.email_notifications_enabled === false) continue;
       await sendEmail(
         p.email,
         `Session Cancelled: "${session.title as string}"`,

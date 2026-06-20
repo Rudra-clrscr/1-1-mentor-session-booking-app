@@ -9,8 +9,8 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.id;
     const user = await queryOne(
-      `SELECT id, email, name, role, avatar_url, bio, hourly_rate, 
-              total_sessions, avg_rating, verified, created_at
+      `SELECT id, email, name, role, avatar_url, bio, hourly_rate,
+              total_sessions, avg_rating, verified, created_at, email_notifications_enabled
        FROM users WHERE id = $1`,
       [userId]
     );
@@ -21,8 +21,8 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
 
     // Fetch user skills
     const skills = await query(
-      `SELECT skill_name, proficiency_level, years_experience 
-       FROM user_skills WHERE user_id = $1 
+      `SELECT skill_name, proficiency_level, years_experience
+       FROM user_skills WHERE user_id = $1
        ORDER BY proficiency_level DESC`,
       [userId]
     );
@@ -72,20 +72,21 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
 // Shared update handler
 const updateProfileHandler = async (req: AuthRequest, res: Response) => {
   try {
-    const { name, bio, avatar_url, hourly_rate, skills } = req.body;
+    const { name, bio, avatar_url, hourly_rate, skills, email_notifications_enabled } = req.body;
     const userId = req.user?.id;
     const now = new Date().toISOString();
 
     // Update user profile
     await query(
-      `UPDATE users 
+      `UPDATE users
        SET name = COALESCE($1, name),
            bio = COALESCE($2, bio),
            avatar_url = COALESCE($3, avatar_url),
            hourly_rate = COALESCE($4, hourly_rate),
-           updated_at = $5
-       WHERE id = $6`,
-      [name || null, bio || null, avatar_url || null, hourly_rate || null, now, userId]
+           email_notifications_enabled = COALESCE($5, email_notifications_enabled),
+           updated_at = $6
+       WHERE id = $7`,
+      [name || null, bio || null, avatar_url || null, hourly_rate || null, email_notifications_enabled ?? null, now, userId]
     );
 
     // Update skills if provided
@@ -107,8 +108,8 @@ const updateProfileHandler = async (req: AuthRequest, res: Response) => {
 
     // Fetch updated profile
     const updatedUser = await queryOne(
-      `SELECT id, email, name, role, avatar_url, bio, hourly_rate, 
-              total_sessions, avg_rating, verified, created_at
+      `SELECT id, email, name, role, avatar_url, bio, hourly_rate,
+              total_sessions, avg_rating, verified, created_at, email_notifications_enabled
        FROM users WHERE id = $1`,
       [userId]
     );
