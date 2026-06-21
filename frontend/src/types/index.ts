@@ -162,6 +162,22 @@ export interface SocketEvents {
   'recording:consent-result': { granted: boolean };
   'recording:stop': { sessionId: string };
   'recording:stopped-by-peer': void;
+
+  // Whiteboard Events
+  'whiteboard:draw': { segment: WhiteboardSegment; userId: string };
+  'whiteboard:clear': { userId: string };
+}
+
+export interface WhiteboardSegment {
+  tool: 'pen' | 'eraser';
+  color: string;
+  size: number;
+  // Normalized 0-1 coordinates so strokes line up regardless of each
+  // participant's canvas pixel size.
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
 }
 
 // Auth Types

@@ -1,5 +1,5 @@
 import { io, Socket } from 'socket.io-client';
-import { SocketEvents } from '@/types';
+import { SocketEvents, WhiteboardSegment } from '@/types';
 import { useAuthStore } from '@/store';
 
 const rawSocketUrl = process.env.NEXT_PUBLIC_SOCKET_URL;
@@ -350,6 +350,20 @@ class SocketService {
       column, 
       sessionId: this.currentSessionId,
       userId: user?.id
+    } as any);
+  }
+
+  // Whiteboard
+  sendWhiteboardDraw(segment: WhiteboardSegment, sessionId?: string) {
+    this.emit('whiteboard:draw', {
+      segment,
+      sessionId: sessionId || this.currentSessionId,
+    } as any);
+  }
+
+  clearWhiteboard(sessionId?: string) {
+    this.emit('whiteboard:clear', {
+      sessionId: sessionId || this.currentSessionId,
     } as any);
   }
 

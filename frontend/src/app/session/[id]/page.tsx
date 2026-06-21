@@ -10,6 +10,7 @@ import { webrtcDiagnostics } from '@/services/webrtcDiagnostics';
 import { useSessionStore, useEditorStore, useVideoStore, useAuthStore } from '@/store';
 import { GlowingButton, GlowingCard, Badge, Avatar } from '@/components/ui/GlowingComponents';
 import { CollaborativeEditor } from '@/components/CollaborativeEditor';
+import { Whiteboard } from '@/components/Whiteboard';
 import { PostSessionFeedbackModal } from '@/components/PostSessionFeedbackModal';
 import { RecordingConsentModal } from '@/components/RecordingConsentModal';
 import { RecordingIndicator } from '@/components/RecordingIndicator';
@@ -92,6 +93,10 @@ export default function SessionPage() {
   const [remoteUserName, setRemoteUserName] = useState<string | null>(null);
   const [showDebugInfo, setShowDebugInfo] = useState(false);
   const [pendingStreamCounter, setPendingStreamCounter] = useState(0);
+
+  // Left panel tab (code editor vs whiteboard) — both stay mounted so
+  // whiteboard strokes and editor content survive switching back and forth.
+  const [leftPanelTab, setLeftPanelTab] = useState<'code' | 'whiteboard'>('code');
 
   // Recording state
   const [showConsentModal, setShowConsentModal] = useState(false);
@@ -1207,48 +1212,79 @@ export default function SessionPage() {
         {/* Code Editor - Takes full height on mobile, 2/3 on large screens */}
         <div className="lg:col-span-2 flex flex-col bg-white dark:bg-dark-900/40 rounded-lg border border-gray-200 dark:border-gray-700/30 overflow-hidden min-h-[40vh] lg:min-h-0">
           <div className="px-2 md:px-4 py-2 md:py-3 border-b border-gray-200 dark:border-gray-700/30 flex flex-col md:flex-row justify-between items-start md:items-center gap-2 flex-shrink-0">
-            <h2 className="text-base md:text-lg font-bold text-gray-900 dark:text-white">Code Editor</h2>
-            <div className="flex items-center gap-1 md:gap-2 w-full md:w-auto">
-              <select
-                value={language}
-                onChange={(e) => handleLanguageChange(e.target.value)}
-                className="px-2 md:px-3 py-1 bg-white dark:bg-dark-800 border border-gray-300 dark:border-gray-700/50 rounded text-xs md:text-sm text-gray-900 dark:text-white flex-1 md:flex-none"
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setLeftPanelTab('code')}
+                className={`px-3 py-1.5 rounded text-sm font-medium ${
+                  leftPanelTab === 'code'
+                    ? 'bg-primary-500 text-white'
+                    : 'text-gray-600 dark:text-gray-400'
+                }`}
               >
-                <option value="javascript" className="bg-white dark:bg-dark-900 text-gray-900 dark:text-white">JavaScript</option>
-                <option value="python" className="bg-white dark:bg-dark-900 text-gray-900 dark:text-white">Python</option>
-                <option value="typescript" className="bg-white dark:bg-dark-900 text-gray-900 dark:text-white">TypeScript</option>
-                <option value="java" className="bg-white dark:bg-dark-900 text-gray-900 dark:text-white">Java</option>
-                <option value="cpp" className="bg-white dark:bg-dark-900 text-gray-900 dark:text-white">C++</option>
-              </select>
-              <GlowingButton 
-                variant="secondary" 
-                className="text-xs md:text-sm flex-1 md:flex-none"
-                onClick={handleRunCode}
+                Code Editor
+              </button>
+              <button
+                onClick={() => setLeftPanelTab('whiteboard')}
+                className={`px-3 py-1.5 rounded text-sm font-medium ${
+                  leftPanelTab === 'whiteboard'
+                    ? 'bg-primary-500 text-white'
+                    : 'text-gray-600 dark:text-gray-400'
+                }`}
               >
-                ▶ Run
-              </GlowingButton>
+                🖊️ Whiteboard
+              </button>
             </div>
+            {leftPanelTab === 'code' && (
+              <div className="flex items-center gap-1 md:gap-2 w-full md:w-auto">
+                <select
+                  value={language}
+                  onChange={(e) => handleLanguageChange(e.target.value)}
+                  className="px-2 md:px-3 py-1 bg-white dark:bg-dark-800 border border-gray-300 dark:border-gray-700/50 rounded text-xs md:text-sm text-gray-900 dark:text-white flex-1 md:flex-none"
+                >
+                  <option value="javascript" className="bg-white dark:bg-dark-900 text-gray-900 dark:text-white">JavaScript</option>
+                  <option value="python" className="bg-white dark:bg-dark-900 text-gray-900 dark:text-white">Python</option>
+                  <option value="typescript" className="bg-white dark:bg-dark-900 text-gray-900 dark:text-white">TypeScript</option>
+                  <option value="java" className="bg-white dark:bg-dark-900 text-gray-900 dark:text-white">Java</option>
+                  <option value="cpp" className="bg-white dark:bg-dark-900 text-gray-900 dark:text-white">C++</option>
+                </select>
+                <GlowingButton
+                  variant="secondary"
+                  className="text-xs md:text-sm flex-1 md:flex-none"
+                  onClick={handleRunCode}
+                >
+                  ▶ Run
+                </GlowingButton>
+              </div>
+            )}
           </div>
           <div className="flex-1 min-h-0 overflow-hidden">
-            {/* 
-              CollaborativeEditor with CRDT (Yjs)
-              - Real-time code sync using Operational Transformation
-              - Multiple users can edit simultaneously without conflicts
-              - Automatic conflict resolution at character level
-              - Preserves cursor positions for remote users
+            {/*
+              Both panels stay mounted (toggled via CSS display) so the Yjs
+              connection and whiteboard canvas strokes survive tab switches
+              instead of being torn down and reset.
             */}
-            <CollaborativeEditor
-              sessionId={sessionId}
-              userId={currentUser?.id || 'unknown'}
-              userName={currentUser?.name}
-              userEmail={currentUser?.email}
-              initialCode={code}
-              language={language}
-              theme="vs-dark"
-              onCodeChange={handleCodeChange}
-              height="100%"
-              wsUrl={process.env.NEXT_PUBLIC_COLLAB_WS_URL || 'ws://localhost:1234'}
-            />
+            <div style={{ display: leftPanelTab === 'code' ? 'block' : 'none', height: '100%' }}>
+              {/*
+                CollaborativeEditor with CRDT (Yjs)
+                - Real-time code sync using Operational Transformation
+                - Multiple users can edit simultaneously without conflicts
+                - Automatic conflict resolution at character level
+                - Preserves cursor positions for remote users
+              */}
+              <CollaborativeEditor
+                sessionId={sessionId}
+                userId={currentUser?.id || 'unknown'}
+                userName={currentUser?.name}
+                userEmail={currentUser?.email}
+                initialCode={code}
+                language={language}
+                theme="vs-dark"
+                onCodeChange={handleCodeChange}
+                height="100%"
+                wsUrl={process.env.NEXT_PUBLIC_COLLAB_WS_URL || 'ws://localhost:1234'}
+              />
+            </div>
+            <Whiteboard sessionId={sessionId} active={leftPanelTab === 'whiteboard'} />
           </div>
         </div>
 

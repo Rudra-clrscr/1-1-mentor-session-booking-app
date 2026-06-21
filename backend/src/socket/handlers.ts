@@ -30,6 +30,10 @@ import {
   handleRecordingConsent,
   handleRecordingStop,
 } from './handlers/recording';
+import {
+  handleWhiteboardDraw,
+  handleWhiteboardClear,
+} from './handlers/whiteboard';
 
 export function setupSocketHandlers(io: SocketIOServer) {
   io.on('connection', (socket: Socket) => {
@@ -41,6 +45,10 @@ export function setupSocketHandlers(io: SocketIOServer) {
     socket.on('code:update', (data) => handleCodeUpdate(socket, io, data));
     socket.on('cursor:move', (data) => handleCursorMove(socket, io, data));
     socket.on('language:change', (data) => handleLanguageChange(socket, io, data));
+
+    // Whiteboard events
+    socket.on('whiteboard:draw', (data) => handleWhiteboardDraw(socket, io, data));
+    socket.on('whiteboard:clear', (data) => handleWhiteboardClear(socket, io, data));
 
     // Chat events
     socket.on('message:send', (data) => {
