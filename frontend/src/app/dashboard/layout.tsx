@@ -6,6 +6,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { LoadingSpinner } from '@/components/ui/GlowingComponents';
 import { socketService } from '@/services/socket';
 import { ReminderToast } from '@/components/ReminderToast';
+import { NotificationDropdown } from '@/components/NotificationDropdown';
+import { useNotifications } from '@/hooks/useNotifications';
 import { SocketEvents } from '@/types';
 
 export default function ProtectedLayout({
@@ -16,6 +18,8 @@ export default function ProtectedLayout({
   const { isAuthenticated, isLoading, token } = useAuth();
   const router = useRouter();
   const [reminder, setReminder] = useState<{ title: string; message: string; sessionId: string } | null>(null);
+  const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification } =
+    useNotifications(isAuthenticated);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -57,6 +61,15 @@ export default function ProtectedLayout({
 
   return (
     <>
+      <div className="fixed top-3 right-3 md:top-4 md:right-6 z-40">
+        <NotificationDropdown
+          notifications={notifications}
+          unreadCount={unreadCount}
+          onMarkAsRead={markAsRead}
+          onMarkAllAsRead={markAllAsRead}
+          onDelete={deleteNotification}
+        />
+      </div>
       {children}
       {reminder && (
         <ReminderToast

@@ -1,7 +1,14 @@
+'use client';
+
+import { useEffect, useRef, useState } from 'react';
+import Editor, { OnMount } from '@monaco-editor/react';
+import type { editor as MonacoEditorNS } from 'monaco-editor';
+import { MonacoBinding } from 'y-monaco';
 import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
 import { Awareness } from 'y-protocols/awareness';
 import { Observable } from 'lib0/observable';
+import { createNewCollaborativeEditorService as createCollabService } from '@/services/collaborativeEditorService';
 
 export interface RemoteUserState {
   user?: {
@@ -20,7 +27,7 @@ export interface RemoteUserState {
  * 
  * 🔥 FIX for Issue #61: Late-joining students now receive existing code content
  */
-export class CollaborativeEditorService extends Observable {
+export class CollaborativeEditorService extends Observable<string> {
   private doc: Y.Doc;
   private provider: WebsocketProvider | null = null;
   private yText: Y.Text;
@@ -165,7 +172,7 @@ export class CollaborativeEditorService extends Observable {
     if (!this.provider) return;
     
     console.log('🔄 [COLLAB] Forcing sync...');
-    this.provider.sync(true);
+    this.provider.synced = true;
     
     // Also request sync from awareness
     if (this.awareness) {
@@ -199,7 +206,7 @@ export class CollaborativeEditorService extends Observable {
       this.syncRetryTimer = setTimeout(() => {
         if (this.provider) {
           console.log(`🔄 [COLLAB] Retry ${this.syncAttempts}: Forcing sync...`);
-          this.provider.sync(true);
+          this.provider.synced = true;
           
           // Also try to request from other peers
           if (this.awareness) {
@@ -233,13 +240,14 @@ export class CollaborativeEditorService extends Observable {
         clearTimeout(timeout);
         resolve();
       } else {
-        this.provider?.on('status', function onStatus(event: { status: string }) {
+        const onStatus = (event: { status: string }) => {
           if (event.status === 'connected') {
-            this.off('status', onStatus);
+            this.provider?.off('status', onStatus);
             clearTimeout(timeout);
             resolve();
           }
-        });
+        };
+        this.provider?.on('status', onStatus);
       }
     });
   }
@@ -407,6 +415,110 @@ export class CollaborativeEditorService extends Observable {
  */
 export function createNewCollaborativeEditorService(): CollaborativeEditorService {
   return new CollaborativeEditorService();
+}
+
+// ─── React component ───────────────────────────────────────────────────────
+// Wraps Monaco + the CRDT service (services/collaborativeEditorService.ts) so
+// concurrent edits sync via Yjs while still reporting plain-text changes to
+// the host page (e.g. for code execution, recording, language sync).
+
+interface CollaborativeEditorProps {
+  sessionId: string;
+  userId: string;
+  userName?: string;
+  userEmail?: string;
+  initialCode?: string;
+  language?: string;
+  theme?: string;
+  onCodeChange?: (code: string | undefined) => void;
+  height?: string | number;
+  wsUrl?: string;
+}
+
+export function CollaborativeEditor({
+  sessionId,
+  userId,
+  userName,
+  userEmail,
+  initialCode,
+  language = 'javascript',
+  theme = 'vs-dark',
+  onCodeChange,
+  height = '100%',
+  wsUrl,
+}: CollaborativeEditorProps) {
+  const editorRef = useRef<MonacoEditorNS.IStandaloneCodeEditor | null>(null);
+  const bindingRef = useRef<MonacoBinding | null>(null);
+  const tryBindRef = useRef<() => void>(() => {});
+  const [status, setStatus] = useState<'connecting' | 'synced' | 'error'>('connecting');
+
+  useEffect(() => {
+    let cancelled = false;
+    const service = createCollabService();
+
+    const tryBind = () => {
+      if (cancelled || bindingRef.current) return;
+      const editorInstance = editorRef.current;
+      const yText = service.getSharedText();
+      if (!editorInstance || !yText) return;
+      const model = editorInstance.getModel();
+      if (!model) return;
+
+      if (initialCode && yText.length === 0) {
+        yText.insert(0, initialCode);
+      }
+
+      bindingRef.current = new MonacoBinding(
+        yText,
+        model,
+        new Set([editorInstance]),
+        service.getProvider()?.awareness
+      );
+      setStatus('synced');
+    };
+    tryBindRef.current = tryBind;
+
+    service
+      .initialize(sessionId, userId, wsUrl, userName, userEmail)
+      .then(tryBind)
+      .catch((err) => {
+        console.error('Failed to initialize collaborative editor:', err);
+        if (!cancelled) setStatus('error');
+      });
+
+    return () => {
+      cancelled = true;
+      bindingRef.current?.destroy();
+      bindingRef.current = null;
+      service.destroy();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId, userId, userName, userEmail, wsUrl]);
+
+  const handleMount: OnMount = (editorInstance) => {
+    editorRef.current = editorInstance;
+    editorInstance.onDidChangeModelContent(() => {
+      onCodeChange?.(editorInstance.getValue());
+    });
+    tryBindRef.current();
+  };
+
+  return (
+    <div className="relative h-full w-full">
+      <Editor
+        height={height}
+        language={language}
+        theme={theme}
+        onMount={handleMount}
+        options={{ minimap: { enabled: false }, fontSize: 14 }}
+      />
+      {status !== 'synced' && (
+        <div className="absolute top-2 right-2 text-xs px-2 py-1 rounded bg-yellow-500/80 text-white pointer-events-none">
+          {status === 'connecting' ? 'Connecting…' : 'Offline'}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default CollaborativeEditorService;

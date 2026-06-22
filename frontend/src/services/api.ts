@@ -207,12 +207,20 @@ class ApiClient {
     return this.client.get('/notifications');
   }
 
+  async getUnreadNotificationCount(): Promise<ApiResponse<{ unread_count: number }>> {
+    return this.client.get('/notifications/unread/count');
+  }
+
   async createNotification(data: { user_id: string; type: string; title: string; message: string }): Promise<ApiResponse<any>> {
     return this.client.post('/notifications', data);
   }
 
   async markNotificationAsRead(notificationId: string): Promise<ApiResponse<any>> {
     return this.client.patch(`/notifications/${notificationId}/read`);
+  }
+
+  async markAllNotificationsAsRead(): Promise<ApiResponse<any>> {
+    return this.client.put('/notifications/mark-all/read');
   }
 
   async deleteNotification(notificationId: string): Promise<ApiResponse<any>> {

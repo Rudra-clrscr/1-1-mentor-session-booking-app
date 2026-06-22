@@ -15,7 +15,7 @@ import codeRoutes, { setSocketIO as setCodeSocketIO } from './routes/code';
 import profileRoutes from './routes/profile';
 import ratingsRoutes from './routes/ratings';
 import sessionHistoryRoutes from './routes/sessionHistory';
-import notificationsRoutes from './routes/notifications';
+import notificationsRoutes, { setSocketIO as setNotificationSocketIO } from './routes/notifications';
 import availabilityRoutes from './routes/availability';
 import paymentRoutes from './routes/payments';
 import recordingRoutes from './routes/recordings';
@@ -54,6 +54,7 @@ const io = new SocketIOServer(httpServer, {
 setSessionSocketIO(io);
 setCodeSocketIO(io);
 setReminderSocketIO(io);
+setNotificationSocketIO(io);
 
 // Socket.IO authentication middleware
 io.use((socket, next) => {

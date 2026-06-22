@@ -154,6 +154,16 @@ export interface SocketEvents {
     message: string;
     data?: Record<string, any>;
   };
+  'notification:new': {
+    id: string;
+    user_id: string;
+    type: string;
+    title: string;
+    message: string;
+    related_id?: string;
+    is_read: boolean;
+    created_at: string;
+  };
 
   // Recording Events
   'recording:request': { sessionId: string; requesterName: string };

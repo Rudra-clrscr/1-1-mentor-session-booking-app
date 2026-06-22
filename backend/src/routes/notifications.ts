@@ -1,9 +1,17 @@
 import { Router, Response } from 'express';
+import { Server as SocketIOServer } from 'socket.io';
 import { query, queryOne } from '@/database';
 import authMiddleware, { AuthRequest } from '@/middleware/auth';
 import { v4 as uuidv4 } from 'uuid';
 
 const router = Router();
+
+// Socket.io instance for emitting live notification events
+let io: SocketIOServer | null = null;
+
+export function setSocketIO(socketIO: SocketIOServer) {
+  io = socketIO;
+}
 
 // Get unread notifications for user
 router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
@@ -119,15 +127,7 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    const notificationId = uuidv4();
-    const now = new Date().toISOString();
-
-    await query(
-      `INSERT INTO notifications (id, user_id, type, title, message, related_id, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [notificationId, user_id, type, title, message, related_id || null, now]
-    );
-
+    const notificationId = await createNotification(user_id, type, title, message, related_id);
     const newNotification = await queryOne('SELECT * FROM notifications WHERE id = $1', [notificationId]);
 
     res.json({
@@ -140,7 +140,9 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
   }
 });
 
-// Create notification (internal use)
+// Create notification (internal use) — also emits a live `notification:new`
+// socket event to the recipient's personal room, so every caller of this
+// function gets real-time delivery for free without wiring sockets itself.
 export async function createNotification(
   userId: string,
   type: string,
@@ -157,6 +159,11 @@ export async function createNotification(
        VALUES ($1, $2, $3, $4, $5, $6, $7)`,
       [notificationId, userId, type, title, message, relatedId || null, now]
     );
+
+    if (io) {
+      const newNotification = await queryOne('SELECT * FROM notifications WHERE id = $1', [notificationId]);
+      io.to(`user:${userId}`).emit('notification:new', newNotification);
+    }
 
     return notificationId;
   } catch (err) {
