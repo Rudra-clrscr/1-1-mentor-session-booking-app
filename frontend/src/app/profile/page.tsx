@@ -34,6 +34,7 @@ export default function ProfilePage() {
     bio: '',
     avatar_url: '',
     skills: [] as Skill[],
+    email_notifications_enabled: true,
   });
   const [newSkill, setNewSkill] = useState<Skill>({
     skill_name: '',
@@ -56,6 +57,7 @@ export default function ProfilePage() {
             bio: profileData.bio || '',
             avatar_url: profileData.avatar_url || '',
             skills: profileData.skills || [],
+            email_notifications_enabled: profileData.email_notifications_enabled !== false,
           });
         } else {
           setError('Failed to load profile');
@@ -117,6 +119,7 @@ export default function ProfilePage() {
           bio: response.data.bio || '',
           avatar_url: response.data.avatar_url || '',
           skills: response.data.skills || [],
+          email_notifications_enabled: response.data.email_notifications_enabled !== false,
         });
         setEditing(false);
       } else {
@@ -168,6 +171,9 @@ export default function ProfilePage() {
                 <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">{profile?.name}</h2>
                 <p className="text-gray-600 dark:text-gray-400 capitalize">{profile?.role}</p>
                 <p className="text-sm text-gray-500 dark:text-gray-400">{profile?.email}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                  📧 Email notifications: {formData.email_notifications_enabled ? 'On' : 'Off'}
+                </p>
               </div>
               <GlowingButton onClick={() => setEditing(true)} className="w-full md:w-auto">
                 Edit Profile
@@ -268,6 +274,20 @@ export default function ProfilePage() {
                   className="w-full px-4 py-3 bg-white dark:bg-dark-800/50 border border-gray-300 dark:border-gray-700/50 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200"
                 />
               </div>
+
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.email_notifications_enabled}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, email_notifications_enabled: e.target.checked }))
+                  }
+                  className="w-4 h-4 accent-primary-500"
+                />
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Email me about bookings, cancellations, and session reminders
+                </span>
+              </label>
             </div>
 
             {/* Skills */}
