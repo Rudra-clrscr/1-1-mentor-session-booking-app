@@ -1,5 +1,5 @@
 import { io, Socket } from 'socket.io-client';
-import { SocketEvents, WhiteboardSegment } from '@/types';
+import { SocketEvents, WhiteboardSegment, MessageAttachment } from '@/types';
 import { useAuthStore } from '@/store';
 
 const rawSocketUrl = process.env.NEXT_PUBLIC_SOCKET_URL;
@@ -319,14 +319,18 @@ class SocketService {
   }
 
   // Chat
-  sendMessage(content: string) {
-    console.log('📤 SocketService.sendMessage called:', content);
+  sendMessage(content: string, attachment?: MessageAttachment) {
+    console.log('📤 SocketService.sendMessage called:', content, attachment);
     const user = useAuthStore.getState().user;
-    const data = { 
-      content, 
+    const data = {
+      // `type` stays 'text' even with an attachment — it's an orthogonal field
+      // (content format: text/code_snippet/system) backed by a fixed Postgres
+      // enum; attachment presence alone signals "this message has a file".
+      content,
       sessionId: this.currentSessionId,
       userId: user?.id,
-      type: 'text'
+      type: 'text',
+      attachment,
     };
     console.log('📡 Emitting message:send event:', data);
     this.emit('message:send', data as any);

@@ -1,7 +1,16 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
-import { ApiResponse, User, Session, Message } from '@/types';
+import { ApiResponse, User, Session, Message, MessageAttachment } from '@/types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+
+// The backend serves uploaded files (e.g. chat attachments) from its own
+// origin under /uploads, not under /api — strip the /api suffix to get there.
+export const SERVER_ORIGIN = API_URL.replace(/\/api\/?$/, '');
+
+export function resolveServerUrl(relativeUrl: string): string {
+  if (/^https?:\/\//i.test(relativeUrl)) return relativeUrl;
+  return `${SERVER_ORIGIN}${relativeUrl}`;
+}
 
 class ApiClient {
   private client: AxiosInstance;
@@ -120,9 +129,17 @@ class ApiClient {
 
   async sendMessage(
     sessionId: string,
-    data: { content: string; type: string }
+    data: { content: string; type: string; attachment?: MessageAttachment }
   ): Promise<ApiResponse<Message>> {
     return this.client.post(`/messages/${sessionId}`, data);
+  }
+
+  async uploadChatFile(file: File): Promise<ApiResponse<MessageAttachment>> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.client.post('/upload/chat', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
   }
 
   // Code endpoints

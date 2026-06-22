@@ -4,10 +4,13 @@ import { v4 as uuidv4 } from 'uuid';
 
 export async function handleMessageSend(socket: Socket, io: SocketIOServer, data: any) {
   try {
-    const { sessionId, content, type = 'text' } = data;
+    const { sessionId, content, type = 'text', attachment } = data;
     const userId = socket.data.userId; // Use authenticated userId from socket
-    
+
     if (!sessionId || !userId) {
+      return;
+    }
+    if (!content && !attachment) {
       return;
     }
 
@@ -30,9 +33,9 @@ export async function handleMessageSend(socket: Socket, io: SocketIOServer, data
 
     // Save message to database
     await query(
-      `INSERT INTO messages (id, session_id, user_id, content, type, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-      [messageId, sessionId, userId, content, type, timestamp]
+      `INSERT INTO messages (id, session_id, user_id, content, type, attachment, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [messageId, sessionId, userId, content ?? '', type, attachment ? JSON.stringify(attachment) : null, timestamp]
     );
 
     // Fetch user details
@@ -46,6 +49,7 @@ export async function handleMessageSend(socket: Socket, io: SocketIOServer, data
       user_id: userId,
       content,
       type,
+      attachment,
       created_at: timestamp,
       user: user ? { id: user.id, name: user.name, email: user.email, avatar: user.avatar_url } : null,
     };

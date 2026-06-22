@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { webrtcService } from '@/services/webrtc';
-import { apiClient } from '@/services/api';
+import { apiClient, resolveServerUrl } from '@/services/api';
 import { socketService } from '@/services/socket';
 import { setupVideoDebug } from '@/services/webrtcDebug';
 import { webrtcDiagnostics } from '@/services/webrtcDiagnostics';
@@ -16,6 +16,7 @@ import { RecordingConsentModal } from '@/components/RecordingConsentModal';
 import { RecordingIndicator } from '@/components/RecordingIndicator';
 import { RecordingToast } from '@/components/RecordingToast';
 import { useRecorder } from '@/hooks/useRecorder';
+import { MessageAttachment } from '@/types';
 import dynamic from 'next/dynamic';
 
 // Configure Monaco Editor - disable workers to avoid network errors
@@ -59,6 +60,7 @@ export default function SessionPage() {
   const [ratingMentorName, setRatingMentorName] = useState('your mentor');
   const [ratingMentorAvatar, setRatingMentorAvatar] = useState<string | undefined>(undefined);
   const messageEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const listenerRef = useRef<any>(null);
 
   const {
@@ -97,6 +99,10 @@ export default function SessionPage() {
   // Left panel tab (code editor vs whiteboard) — both stay mounted so
   // whiteboard strokes and editor content survive switching back and forth.
   const [leftPanelTab, setLeftPanelTab] = useState<'code' | 'whiteboard'>('code');
+
+  // Chat attachment state
+  const [uploadingAttachment, setUploadingAttachment] = useState(false);
+  const [attachmentError, setAttachmentError] = useState('');
 
   // Recording state
   const [showConsentModal, setShowConsentModal] = useState(false);
@@ -833,9 +839,9 @@ export default function SessionPage() {
     messageEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSendMessage = async (content: string) => {
-    console.log('📤 Sending message:', content);
-    
+  const handleSendMessage = async (content: string, attachment?: MessageAttachment) => {
+    console.log('📤 Sending message:', content, attachment);
+
     if (!socketService.isConnected()) {
       console.error('❌ Socket not connected');
       return;
@@ -854,6 +860,7 @@ export default function SessionPage() {
       user_id: currentUser.id,
       content,
       type: 'text',
+      attachment,
       created_at: new Date().toISOString(),
       user: {
         name: currentUser.name,
@@ -870,7 +877,44 @@ export default function SessionPage() {
 
     // Send message to server (deduplication will handle server response)
     console.log('📡 Calling socketService.sendMessage');
-    socketService.sendMessage(content);
+    socketService.sendMessage(content, attachment);
+  };
+
+  const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024; // 10MB, matches the backend limit
+  const ALLOWED_ATTACHMENT_TYPES = [
+    'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+    'application/pdf', 'text/plain',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/zip',
+  ];
+
+  const handleFileAttach = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+
+    if (file.size > MAX_ATTACHMENT_SIZE) {
+      setAttachmentError('File exceeds the 10MB size limit');
+      return;
+    }
+    if (!ALLOWED_ATTACHMENT_TYPES.includes(file.type)) {
+      setAttachmentError(`Unsupported file type: ${file.type || 'unknown'}`);
+      return;
+    }
+
+    setAttachmentError('');
+    setUploadingAttachment(true);
+    try {
+      const res = await apiClient.uploadChatFile(file);
+      if (res.data) {
+        handleSendMessage(res.data.name, res.data);
+      }
+    } catch (err: any) {
+      setAttachmentError(err?.response?.data?.error || 'Failed to upload file');
+    } finally {
+      setUploadingAttachment(false);
+    }
   };
 
   const handleCodeChange = (value: string | undefined) => {
@@ -1509,15 +1553,56 @@ export default function SessionPage() {
               {messages.map((msg) => (
                 <div key={msg.id} className="flex gap-2">
                   <Avatar name={msg.user?.name || 'User'} size="sm" />
-                  <div>
+                  <div className="min-w-0">
                     <p className="font-semibold text-gray-900 dark:text-white text-xs">{msg.user?.name}</p>
-                    <p className="text-gray-700 dark:text-gray-300 break-words text-xs md:text-sm">{msg.content}</p>
+                    {msg.content && (
+                      <p className="text-gray-700 dark:text-gray-300 break-words text-xs md:text-sm">{msg.content}</p>
+                    )}
+                    {msg.attachment && (
+                      msg.attachment.type.startsWith('image/') ? (
+                        <a href={resolveServerUrl(msg.attachment.url)} target="_blank" rel="noopener noreferrer">
+                          <img
+                            src={resolveServerUrl(msg.attachment.url)}
+                            alt={msg.attachment.name}
+                            className="mt-1 max-w-[160px] max-h-[160px] rounded border border-gray-200 dark:border-gray-700/30 object-contain"
+                          />
+                        </a>
+                      ) : (
+                        <a
+                          href={resolveServerUrl(msg.attachment.url)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-1 flex items-center gap-1.5 text-xs text-green-700 dark:text-green-400 underline break-all"
+                        >
+                          📎 {msg.attachment.name}
+                        </a>
+                      )
+                    )}
                   </div>
                 </div>
               ))}
               <div ref={messageEndRef} />
             </div>
-            <div className="px-2 md:px-4 py-2 md:py-3 border-t border-gray-200 dark:border-gray-700/30 flex-shrink-0">
+            {attachmentError && (
+              <div className="px-2 md:px-4 pb-1 text-xs text-red-500">{attachmentError}</div>
+            )}
+            <div className="px-2 md:px-4 py-2 md:py-3 border-t border-gray-200 dark:border-gray-700/30 flex-shrink-0 flex items-center gap-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                className="hidden"
+                accept={ALLOWED_ATTACHMENT_TYPES.join(',')}
+                onChange={handleFileAttach}
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingAttachment}
+                title="Attach a file or image"
+                className="px-2 py-2 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white disabled:opacity-50"
+              >
+                {uploadingAttachment ? '⏳' : '📎'}
+              </button>
               <input
                 type="text"
                 placeholder="Send a message..."

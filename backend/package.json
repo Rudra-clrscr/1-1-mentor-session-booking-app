@@ -17,6 +17,7 @@
     "dev:all": "npm run dev & npm run collab:server:dev"
   },
   "dependencies": {
+    "@types/multer": "^2.1.0",
     "@types/node-cron": "^3.0.11",
     "@types/nodemailer": "^8.0.0",
     "axios": "^1.6.2",
@@ -30,6 +31,7 @@
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.0",
     "module-alias": "^2.3.4",
+    "multer": "^1.4.5-lts.1",
     "node-cron": "^4.2.1",
     "nodemailer": "^8.0.10",
     "pg": "^8.11.3",

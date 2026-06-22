@@ -21,6 +21,8 @@ import paymentRoutes from './routes/payments';
 import recordingRoutes from './routes/recordings';
 import adminRoutes from './routes/admin';
 import analyticsRoutes from './routes/analytics';
+import uploadRoutes from './routes/upload';
+import path from 'path';
 import { setupSocketHandlers } from './socket/handlers';
 import { setupRealtimeHandlers } from './socket/realtimeHandlers';
 import { startReminderService, setSocketIO as setReminderSocketIO } from './services/reminderService';
@@ -117,6 +119,8 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/recordings', recordingRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/upload', uploadRoutes);
+app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
 // Health check
 app.get('/health', async (req: Request, res: Response) => {
