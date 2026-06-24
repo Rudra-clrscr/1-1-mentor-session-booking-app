@@ -9,7 +9,7 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.id;
     const user = await queryOne(
-      `SELECT id, email, name, role, avatar_url, bio, hourly_rate,
+      `SELECT id, email, name, role, avatar_url, bio, hourly_rate, timezone,
               total_sessions, avg_rating, verified, created_at, email_notifications_enabled
        FROM users WHERE id = $1`,
       [userId]
@@ -41,7 +41,7 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
 router.get('/:id', async (req: AuthRequest, res: Response) => {
   try {
     const user = await queryOne(
-      `SELECT id, email, name, role, avatar_url, bio, hourly_rate, 
+      `SELECT id, email, name, role, avatar_url, bio, hourly_rate, timezone,
               total_sessions, avg_rating, verified, created_at
        FROM users WHERE id = $1`,
       [req.params.id]
@@ -72,9 +72,17 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
 // Shared update handler
 const updateProfileHandler = async (req: AuthRequest, res: Response) => {
   try {
-    const { name, bio, avatar_url, hourly_rate, skills, email_notifications_enabled } = req.body;
+    const { name, bio, avatar_url, hourly_rate, skills, email_notifications_enabled, timezone } = req.body;
     const userId = req.user?.id;
     const now = new Date().toISOString();
+
+    if (timezone) {
+      try {
+        new Intl.DateTimeFormat('en-US', { timeZone: timezone });
+      } catch {
+        return res.status(400).json({ error: 'Invalid timezone' });
+      }
+    }
 
     // Update user profile
     await query(
@@ -84,9 +92,10 @@ const updateProfileHandler = async (req: AuthRequest, res: Response) => {
            avatar_url = COALESCE($3, avatar_url),
            hourly_rate = COALESCE($4, hourly_rate),
            email_notifications_enabled = COALESCE($5, email_notifications_enabled),
-           updated_at = $6
-       WHERE id = $7`,
-      [name || null, bio || null, avatar_url || null, hourly_rate || null, email_notifications_enabled ?? null, now, userId]
+           timezone = COALESCE($6, timezone),
+           updated_at = $7
+       WHERE id = $8`,
+      [name || null, bio || null, avatar_url || null, hourly_rate || null, email_notifications_enabled ?? null, timezone || null, now, userId]
     );
 
     // Update skills if provided
@@ -108,7 +117,7 @@ const updateProfileHandler = async (req: AuthRequest, res: Response) => {
 
     // Fetch updated profile
     const updatedUser = await queryOne(
-      `SELECT id, email, name, role, avatar_url, bio, hourly_rate,
+      `SELECT id, email, name, role, avatar_url, bio, hourly_rate, timezone,
               total_sessions, avg_rating, verified, created_at, email_notifications_enabled
        FROM users WHERE id = $1`,
       [userId]
@@ -200,7 +209,7 @@ router.delete('/skills/:skillName', authMiddleware, async (req: AuthRequest, res
 router.get('/mentors/all', async (req: AuthRequest, res: Response) => {
   try {
     const mentors = await query(
-      `SELECT u.id, u.email, u.name, u.avatar_url, u.bio, u.hourly_rate,
+      `SELECT u.id, u.email, u.name, u.avatar_url, u.bio, u.hourly_rate, u.timezone,
               u.total_sessions, u.avg_rating, u.verified, u.created_at
        FROM users u
        WHERE u.role = 'mentor'

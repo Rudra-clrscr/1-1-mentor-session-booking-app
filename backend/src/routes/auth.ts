@@ -32,7 +32,7 @@ const jwtOptions: SignOptions = { expiresIn: config.JWT_EXPIRY as any };
 // Signup
 router.post('/signup', signupLimiter, async (req: AuthRequest, res: Response) => {
   try {
-    const { email, password, name, role } = req.body;
+    const { email, password, name, role, timezone } = req.body;
 
     // Validate input
     if (!email || !password || !name || !role) {
@@ -47,6 +47,16 @@ router.post('/signup', signupLimiter, async (req: AuthRequest, res: Response) =>
     // Validate role - never trust client input blindly
     if (!['mentor', 'student'].includes(role)) {
       return res.status(400).json({ error: "Invalid role. Must be 'mentor' or 'student'." });
+    }
+
+    let resolvedTimezone = 'UTC';
+    if (timezone) {
+      try {
+        new Intl.DateTimeFormat('en-US', { timeZone: timezone });
+        resolvedTimezone = timezone;
+      } catch {
+        return res.status(400).json({ error: 'Invalid timezone' });
+      }
     }
 
     // Check if user exists
@@ -68,9 +78,9 @@ router.post('/signup', signupLimiter, async (req: AuthRequest, res: Response) =>
 
     // Create user in users table
     await query(
-      `INSERT INTO users (id, email, name, role, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-      [userId, email, name, role, now, now]
+      `INSERT INTO users (id, email, name, role, timezone, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [userId, email, name, role, resolvedTimezone, now, now]
     );
     console.log('✅ User created:', { id: userId, email, role });
 
@@ -93,7 +103,7 @@ router.post('/signup', signupLimiter, async (req: AuthRequest, res: Response) =>
       success: true,
       message: 'Signup successful',
       data: {
-        user: { id: userId, email, name, role },
+        user: { id: userId, email, name, role, timezone: resolvedTimezone },
         token,
       },
     });
@@ -114,7 +124,7 @@ router.post('/login', loginLimiter, async (req: AuthRequest, res: Response) => {
 
     // Find user
     const user = await queryOne(
-      'SELECT id, email, name, role, is_suspended, suspension_reason FROM users WHERE email = $1',
+      'SELECT id, email, name, role, timezone, is_suspended, suspension_reason FROM users WHERE email = $1',
       [email]
     );
 
@@ -178,7 +188,7 @@ router.post('/login', loginLimiter, async (req: AuthRequest, res: Response) => {
 router.get('/me', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const user = await queryOne(
-      'SELECT id, email, name, role FROM users WHERE id = $1',
+      'SELECT id, email, name, role, timezone FROM users WHERE id = $1',
       [req.user?.id]
     );
 

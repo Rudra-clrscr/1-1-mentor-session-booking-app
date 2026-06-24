@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express';
 import * as db from '../database';
 import { authMiddleware } from '../middleware/auth';
+import { zonedTimeToUtc } from '../utils/timezone';
 
 const router = express.Router();
 
@@ -10,15 +11,18 @@ router.get('/mentor/:mentorId', authMiddleware, async (req: Request, res: Respon
     const { mentorId } = req.params;
 
     const result = await db.query(
-      `SELECT * FROM mentor_availability 
-       WHERE mentor_id = $1 
+      `SELECT * FROM mentor_availability
+       WHERE mentor_id = $1
        ORDER BY day_of_week, start_time`,
       [mentorId]
     );
 
+    const mentor = await db.query('SELECT timezone FROM users WHERE id = $1', [mentorId]);
+
     res.json({
       success: true,
       data: result.rows,
+      timezone: mentor.rows[0]?.timezone || 'UTC',
     });
   } catch (error) {
     console.error('Error fetching availability:', error);
@@ -62,43 +66,50 @@ router.get('/available/:mentorId', async (req: Request, res: Response) => {
     const { mentorId } = req.params;
     const { date } = req.query;
 
-    // Get mentor availability for the requested date
-    const dayOfWeek = new Date(date as string).getDay();
+    const mentorRow = await db.query('SELECT timezone FROM users WHERE id = $1', [mentorId]);
+    const mentorTimezone = mentorRow.rows[0]?.timezone || 'UTC';
+
+    // Day-of-week for the requested date, evaluated in the mentor's own
+    // timezone (not the server's), since availability is defined relative
+    // to the mentor's local calendar.
+    const dayOfWeek = zonedTimeToUtc(date as string, '12:00', mentorTimezone).getUTCDay();
 
     const availabilityResult = await db.query(
-      `SELECT start_time, end_time FROM mentor_availability 
+      `SELECT start_time, end_time FROM mentor_availability
        WHERE mentor_id = $1 AND day_of_week = $2`,
       [mentorId, dayOfWeek]
     );
 
     if (availabilityResult.rows.length === 0) {
-      return res.json({ success: true, data: [], slots: [] });
+      return res.json({ success: true, data: [], slots: [], timezone: mentorTimezone });
     }
 
     // Get booked sessions for this date
     const bookedResult = await db.query(
-      `SELECT scheduled_at, INTERVAL '1 hour' as duration 
-       FROM sessions 
+      `SELECT scheduled_at, INTERVAL '1 hour' as duration
+       FROM sessions
        WHERE mentor_id = $1 AND DATE(scheduled_at) = $2`,
       [mentorId, date]
     );
 
-    const bookedTimes = bookedResult.rows.map((r: any) => new Date(r.scheduled_at));
+    const bookedTimes = bookedResult.rows.map((r: any) => new Date(r.scheduled_at).getTime());
     const availability = availabilityResult.rows[0];
 
-    // Generate 1-hour time slots
-    const slots = [];
-    const start = new Date(`${date}T${availability.start_time}`);
-    const end = new Date(`${date}T${availability.end_time}`);
+    // Generate 1-hour time slots as absolute UTC instants, anchoring the
+    // mentor's local start/end-of-day times via their stored timezone so
+    // the result is correct across DST transitions.
+    const slots: string[] = [];
+    const start = zonedTimeToUtc(date as string, availability.start_time.slice(0, 5), mentorTimezone);
+    const end = zonedTimeToUtc(date as string, availability.end_time.slice(0, 5), mentorTimezone);
 
-    for (let time = new Date(start); time < end; time.setHours(time.getHours() + 1)) {
-      const isBooked = bookedTimes.some((bt: Date) => bt.getTime() === time.getTime());
+    for (let time = start.getTime(); time < end.getTime(); time += 60 * 60 * 1000) {
+      const isBooked = bookedTimes.some((bt) => bt === time);
       if (!isBooked) {
-        slots.push(time.toISOString());
+        slots.push(new Date(time).toISOString());
       }
     }
 
-    res.json({ success: true, data: slots, slots });
+    res.json({ success: true, data: slots, slots, timezone: mentorTimezone });
   } catch (error) {
     console.error('Error fetching available slots:', error);
     res.status(500).json({ error: 'Failed to fetch available slots' });
