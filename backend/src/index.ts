@@ -22,6 +22,7 @@ import recordingRoutes from './routes/recordings';
 import adminRoutes from './routes/admin';
 import analyticsRoutes from './routes/analytics';
 import uploadRoutes from './routes/upload';
+import recurringSessionRoutes, { setSocketIO as setRecurringSessionSocketIO } from './routes/recurringSessions';
 import path from 'path';
 import { setupSocketHandlers } from './socket/handlers';
 import { setupRealtimeHandlers } from './socket/realtimeHandlers';
@@ -57,6 +58,7 @@ setSessionSocketIO(io);
 setCodeSocketIO(io);
 setReminderSocketIO(io);
 setNotificationSocketIO(io);
+setRecurringSessionSocketIO(io);
 
 // Socket.IO authentication middleware
 io.use((socket, next) => {
@@ -120,6 +122,7 @@ app.use('/api/recordings', recordingRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/recurring-sessions', recurringSessionRoutes);
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
 // Health check

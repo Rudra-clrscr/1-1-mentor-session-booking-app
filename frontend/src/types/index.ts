@@ -40,6 +40,29 @@ export interface Session {
   language: string;
   code_language?: string;
   recording_enabled?: boolean;
+  recurring_series_id?: string;
+  recurrence_index?: number;
+  created_at: string;
+  updated_at: string;
+}
+
+// Recurring Session Types
+export type RecurrenceFrequency = 'weekly' | 'biweekly' | 'monthly';
+
+export interface RecurringSeries {
+  id: string;
+  mentor_id: string;
+  student_id?: string;
+  title: string;
+  description?: string;
+  topic?: string;
+  frequency: RecurrenceFrequency;
+  occurrences: number;
+  duration_minutes?: number;
+  language?: string;
+  code_language?: string;
+  recording_enabled?: boolean;
+  status: 'active' | 'cancelled';
   created_at: string;
   updated_at: string;
 }

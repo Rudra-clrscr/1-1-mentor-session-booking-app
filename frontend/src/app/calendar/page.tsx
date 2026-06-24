@@ -161,7 +161,9 @@ export default function CalendarPage() {
                   {sessions.slice(0, 5).map((session) => (
                     <Link key={session.id} href={`/session/${session.id}`}>
                       <div className="p-3 bg-gray-100 dark:bg-dark-800 rounded hover:bg-gray-200 dark:hover:bg-dark-700 transition-all cursor-pointer">
-                        <p className="text-gray-900 dark:text-white text-sm font-medium truncate">{session.title}</p>
+                        <p className="text-gray-900 dark:text-white text-sm font-medium truncate">
+                          {session.recurring_series_id && '🔁 '}{session.title}
+                        </p>
                         <p className="text-gray-500 dark:text-gray-400 text-xs">
                           {session.scheduled_at ? new Date(session.scheduled_at).toLocaleDateString() : 'No date'}
                         </p>
