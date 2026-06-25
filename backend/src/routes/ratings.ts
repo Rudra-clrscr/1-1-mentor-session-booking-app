@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import { query, queryOne } from '@/database';
 import authMiddleware, { AuthRequest } from '@/middleware/auth';
 import { v4 as uuidv4 } from 'uuid';
+import { moderateReviewText } from '@/utils/moderation';
 
 const router = Router();
 
@@ -18,6 +19,11 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
 
     if (reviewText && reviewText.length > 300) {
       return res.status(400).json({ error: 'Review must be 300 characters or less' });
+    }
+
+    const moderation = moderateReviewText(reviewText);
+    if (!moderation.allowed) {
+      return res.status(400).json({ error: moderation.reason });
     }
 
     const session = await queryOne('SELECT * FROM sessions WHERE id = $1', [session_id]);
@@ -138,6 +144,7 @@ router.put('/:rating_id', authMiddleware, async (req: AuthRequest, res: Response
     const { rating, review, comment } = req.body;
     const reviewText = review ?? comment ?? null;
     const ratingId = req.params.rating_id;
+    const studentId = req.user?.id;
 
     if (!rating || (rating < 1 || rating > 5)) {
       return res.status(400).json({ error: 'Invalid rating' });
@@ -147,9 +154,38 @@ router.put('/:rating_id', authMiddleware, async (req: AuthRequest, res: Response
       return res.status(400).json({ error: 'Review must be 300 characters or less' });
     }
 
+    const moderation = moderateReviewText(reviewText);
+    if (!moderation.allowed) {
+      return res.status(400).json({ error: moderation.reason });
+    }
+
+    const existingRating = await queryOne('SELECT * FROM ratings WHERE id = $1', [ratingId]);
+
+    if (!existingRating) {
+      return res.status(404).json({ error: 'Rating not found' });
+    }
+
+    // Only the student who wrote the review can edit it — mentors (and
+    // everyone else) may view feedback but never modify it.
+    if (existingRating.student_id !== studentId) {
+      return res.status(403).json({ error: 'Unauthorized to update this rating' });
+    }
+
     await query(
       'UPDATE ratings SET rating = $1, review = $2 WHERE id = $3',
       [rating, reviewText, ratingId]
+    );
+
+    // Review text/score changed, so the mentor's average needs recomputing too.
+    const avgRatingResult = await queryOne(
+      `SELECT AVG(rating)::DECIMAL(3,2) as avg_rating, COUNT(*) as count
+       FROM ratings WHERE mentor_id = $1`,
+      [existingRating.mentor_id]
+    );
+
+    await query(
+      `UPDATE users SET avg_rating = $1, total_sessions = $2 WHERE id = $3`,
+      [avgRatingResult?.avg_rating || 0, avgRatingResult?.count || 0, existingRating.mentor_id]
     );
 
     const updated = await queryOne('SELECT * FROM ratings WHERE id = $1', [ratingId]);
