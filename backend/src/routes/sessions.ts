@@ -186,6 +186,21 @@ router.post('/:id/join', authMiddleware, requireRole('student'), async (req: Aut
         [studentId, 'in_progress', now, now, req.params.id]
       );
 
+      // If this occurrence belongs to a recurring series, claim every other
+      // unclaimed future occurrence in the series for this same student too —
+      // that's the whole point of recurring booking: one join, not one per slot.
+      if (session.recurring_series_id) {
+        await client.query(
+          `UPDATE sessions SET student_id = $1, updated_at = $2
+           WHERE recurring_series_id = $3 AND student_id IS NULL AND status = 'scheduled'`,
+          [studentId, now, session.recurring_series_id]
+        );
+        await client.query(
+          `UPDATE recurring_series SET student_id = $1, updated_at = $2 WHERE id = $3 AND student_id IS NULL`,
+          [studentId, now, session.recurring_series_id]
+        );
+      }
+
       const updated = await client.query('SELECT * FROM sessions WHERE id = $1', [req.params.id]);
       return { session: updated.rows[0], justBooked: true };
     });
