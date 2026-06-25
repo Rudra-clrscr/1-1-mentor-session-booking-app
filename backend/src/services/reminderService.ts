@@ -4,6 +4,14 @@ import { query } from '@/database';
 import { sendSessionReminderEmail } from '@/services/emailService';
 import { createNotification } from '@/routes/notifications';
 
+// Sessions in either of these statuses are still "on the calendar" and should
+// get reminders. Paid sessions move from 'scheduled' to 'confirmed' once
+// payment clears (see payments.ts), so both must be included or paid
+// bookings — the ones most likely to actually happen — never get reminded.
+export const REMINDER_ELIGIBLE_STATUSES = ['scheduled', 'confirmed'] as const;
+
+const STATUS_IN_CLAUSE = REMINDER_ELIGIBLE_STATUSES.map((s) => `'${s}'`).join(', ');
+
 // ─── Socket.io instance for real-time in-app notifications ────────────────────
 
 let io: SocketIOServer | null = null;
@@ -117,7 +125,7 @@ async function check24hReminders() {
       JOIN users m  ON m.id  = s.mentor_id
       LEFT JOIN users st ON st.id = s.student_id
       WHERE
-        s.status = 'scheduled'
+        s.status IN (${STATUS_IN_CLAUSE})
         AND s.reminder_sent_24h = FALSE
         AND s.scheduled_at BETWEEN NOW() + INTERVAL '23 hours 55 minutes'
                                 AND NOW() + INTERVAL '24 hours 5 minutes'
@@ -157,7 +165,7 @@ async function check30mReminders() {
       JOIN users m  ON m.id  = s.mentor_id
       LEFT JOIN users st ON st.id = s.student_id
       WHERE
-        s.status = 'scheduled'
+        s.status IN (${STATUS_IN_CLAUSE})
         AND s.reminder_sent_30m = FALSE
         AND s.scheduled_at BETWEEN NOW() + INTERVAL '25 minutes'
                                 AND NOW() + INTERVAL '35 minutes'
@@ -196,7 +204,7 @@ async function check15mReminders() {
       JOIN users m  ON m.id  = s.mentor_id
       LEFT JOIN users st ON st.id = s.student_id
       WHERE
-        s.status = 'scheduled'
+        s.status IN (${STATUS_IN_CLAUSE})
         AND s.reminder_sent_15m = FALSE
         AND s.scheduled_at BETWEEN NOW() + INTERVAL '14 minutes'
                                 AND NOW() + INTERVAL '16 minutes'
