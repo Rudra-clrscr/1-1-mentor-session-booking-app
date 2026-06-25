@@ -43,6 +43,27 @@ type Report = {
   created_at: string;
 };
 
+type MentorForVerification = {
+  id: string;
+  name: string;
+  email: string;
+  bio: string | null;
+  hourly_rate: number | null;
+  verified: boolean;
+  verification_date: string | null;
+  created_at: string;
+};
+
+type AuditLogEntry = {
+  id: string;
+  action: string;
+  note: string | null;
+  created_at: string;
+  admin_name: string;
+  target_name: string;
+  target_email: string;
+};
+
 export default function AdminDashboardPage() {
   const { user, isLoading: authLoading } = useAuth();
   const [stats, setStats] = useState<any>(null);
@@ -50,9 +71,12 @@ export default function AdminDashboardPage() {
   const [sessions, setSessions] = useState<AdminSession[]>([]);
   const [queue, setQueue] = useState<ModerationItem[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
+  const [verificationMentors, setVerificationMentors] = useState<MentorForVerification[]>([]);
+  const [verificationStatus, setVerificationStatus] = useState<'pending' | 'verified' | 'all'>('pending');
+  const [auditLog, setAuditLog] = useState<AuditLogEntry[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'sessions' | 'moderation'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'sessions' | 'moderation' | 'verification'>('overview');
 
   const isAdmin = !!user && user.role === 'admin';
 
@@ -126,6 +150,44 @@ export default function AdminDashboardPage() {
     fetchModeration();
   }, [isAdmin, activeTab]);
 
+  useEffect(() => {
+    if (!isAdmin || activeTab !== 'verification') return;
+
+    const fetchVerification = async () => {
+      try {
+        const [mentorsRes, auditRes] = await Promise.all([
+          apiClient.getMentorsForVerification({ status: verificationStatus }),
+          apiClient.getAuditLog(),
+        ]);
+        setVerificationMentors(mentorsRes.data || []);
+        setAuditLog(auditRes.data || []);
+      } catch (err) {
+        console.error('Error fetching verification data:', err);
+      }
+    };
+
+    fetchVerification();
+  }, [isAdmin, activeTab, verificationStatus]);
+
+  const handleVerifyToggle = async (mentor: MentorForVerification) => {
+    try {
+      if (mentor.verified) {
+        const note = window.prompt(`Reason for revoking ${mentor.name}'s verification?`) || undefined;
+        await apiClient.setMentorVerification(mentor.id, false, note);
+      } else {
+        await apiClient.setMentorVerification(mentor.id, true);
+      }
+      const [mentorsRes, auditRes] = await Promise.all([
+        apiClient.getMentorsForVerification({ status: verificationStatus }),
+        apiClient.getAuditLog(),
+      ]);
+      setVerificationMentors(mentorsRes.data || []);
+      setAuditLog(auditRes.data || []);
+    } catch (err) {
+      console.error('Error toggling verification:', err);
+    }
+  };
+
   const handleSuspendToggle = async (targetUser: AdminUser) => {
     try {
       if (targetUser.is_suspended) {
@@ -174,7 +236,7 @@ export default function AdminDashboardPage() {
 
       <main className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-6 md:py-8">
         <div className="flex flex-wrap gap-2 mb-6">
-          {(['overview', 'users', 'sessions', 'moderation'] as const).map((tab) => (
+          {(['overview', 'users', 'sessions', 'moderation', 'verification'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -394,6 +456,94 @@ export default function AdminDashboardPage() {
                       </div>
                       {r.description && (
                         <p className="text-sm text-gray-600 dark:text-gray-400">{r.description}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </GlowingCard>
+          </div>
+        )}
+
+        {/* Verification Tab */}
+        {activeTab === 'verification' && (
+          <div className="space-y-6">
+            <GlowingCard glow="purple">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Mentor Verification</h2>
+                <select
+                  value={verificationStatus}
+                  onChange={(e) => setVerificationStatus(e.target.value as 'pending' | 'verified' | 'all')}
+                  className="px-3 py-2 bg-white dark:bg-dark-800/50 border border-gray-300 dark:border-gray-700/50 rounded-lg text-sm text-gray-900 dark:text-white"
+                >
+                  <option value="pending">Pending</option>
+                  <option value="verified">Verified</option>
+                  <option value="all">All Mentors</option>
+                </select>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700/30">
+                      <th className="py-2 pr-4">Name</th>
+                      <th className="py-2 pr-4">Email</th>
+                      <th className="py-2 pr-4">Status</th>
+                      <th className="py-2 pr-4">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {verificationMentors.map((mentor) => (
+                      <tr key={mentor.id} className="border-b border-gray-100 dark:border-gray-800/50">
+                        <td className="py-2 pr-4 text-gray-900 dark:text-white">{mentor.name}</td>
+                        <td className="py-2 pr-4 text-gray-600 dark:text-gray-400">{mentor.email}</td>
+                        <td className="py-2 pr-4">
+                          <Badge color={mentor.verified ? 'green' : 'yellow'}>
+                            {mentor.verified ? '✓ Verified' : 'Pending'}
+                          </Badge>
+                        </td>
+                        <td className="py-2 pr-4">
+                          <GlowingButton
+                            variant={mentor.verified ? 'outline' : 'secondary'}
+                            className="text-xs py-1 px-3"
+                            onClick={() => handleVerifyToggle(mentor)}
+                          >
+                            {mentor.verified ? 'Revoke' : 'Verify'}
+                          </GlowingButton>
+                        </td>
+                      </tr>
+                    ))}
+                    {verificationMentors.length === 0 && (
+                      <tr>
+                        <td colSpan={4} className="py-6 text-center text-gray-500 dark:text-gray-400">
+                          No mentors found
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </GlowingCard>
+
+            <GlowingCard glow="purple">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Verification Audit Log</h2>
+              {auditLog.length === 0 ? (
+                <p className="text-gray-600 dark:text-gray-400">No verification actions yet</p>
+              ) : (
+                <div className="space-y-2">
+                  {auditLog.map((entry) => (
+                    <div key={entry.id} className="p-3 bg-gray-100/50 dark:bg-dark-800/30 rounded-lg">
+                      <div className="flex justify-between items-start">
+                        <p className="text-gray-900 dark:text-white">
+                          <span className="font-medium">{entry.admin_name}</span>{' '}
+                          {entry.action === 'mentor_verified' ? 'verified' : 'revoked verification for'}{' '}
+                          <span className="font-medium">{entry.target_name}</span>
+                        </p>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          {new Date(entry.created_at).toLocaleString()}
+                        </span>
+                      </div>
+                      {entry.note && (
+                        <p className="text-sm text-gray-600 dark:text-gray-400 italic mt-1">&ldquo;{entry.note}&rdquo;</p>
                       )}
                     </div>
                   ))}

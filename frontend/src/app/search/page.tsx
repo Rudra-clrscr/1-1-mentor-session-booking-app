@@ -275,7 +275,10 @@ export default function AdvancedBrowsePage() {
                       <div className="flex gap-4 mb-4">
                         <Avatar name={mentor.name} size="md" />
                         <div className="flex-1">
-                          <h3 className="text-lg font-bold text-gray-900 dark:text-white">{mentor.name}</h3>
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-lg font-bold text-gray-900 dark:text-white">{mentor.name}</h3>
+                            {mentor.verified && <Badge color="green">✓ Verified</Badge>}
+                          </div>
                           <p className="text-sm text-gray-600 dark:text-gray-400">{mentor.role}</p>
                           {mentor.avg_rating > 0 && (
                             <div className="flex items-center gap-1 mt-1">
