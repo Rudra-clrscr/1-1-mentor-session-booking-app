@@ -1,12 +1,19 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { apiClient } from '@/services/api';
 import { Session, User } from '@/types';
 import { GlowingButton, GlowingCard, Badge, Avatar, LoadingSpinner } from '@/components/ui/GlowingComponents';
 import CancelSessionButton from '@/components/CancelSessionButton';
+import CancelSeriesButton from '@/components/CancelSeriesButton';
+
+const FREQUENCY_LABEL: Record<string, string> = {
+  weekly: 'Weekly',
+  biweekly: 'Biweekly',
+  monthly: 'Monthly',
+};
 
 export default function DashboardPage() {
   const { user, logout, isLoading: authLoading } = useAuth();
@@ -37,6 +44,39 @@ export default function DashboardPage() {
 
     fetchData();
   }, [user]);
+
+  const { seriesGroups, standaloneSessions } = useMemo(() => {
+    const groups = new Map<string, Session[]>();
+    const standalone: Session[] = [];
+
+    for (const session of sessions) {
+      if (session.recurring_series_id) {
+        const existing = groups.get(session.recurring_series_id) ?? [];
+        existing.push(session);
+        groups.set(session.recurring_series_id, existing);
+      } else {
+        standalone.push(session);
+      }
+    }
+
+    for (const occurrences of groups.values()) {
+      occurrences.sort((a, b) => (a.recurrence_index ?? 0) - (b.recurrence_index ?? 0));
+    }
+
+    return { seriesGroups: Array.from(groups.entries()), standaloneSessions: standalone };
+  }, [sessions]);
+
+  const inferFrequency = (occurrences: Session[]): string => {
+    if (occurrences.length < 2 || !occurrences[0].scheduled_at || !occurrences[1].scheduled_at) {
+      return 'Recurring';
+    }
+    const dayGap =
+      (new Date(occurrences[1].scheduled_at).getTime() - new Date(occurrences[0].scheduled_at).getTime()) /
+      (1000 * 60 * 60 * 24);
+    if (Math.round(dayGap) === 7) return FREQUENCY_LABEL.weekly;
+    if (Math.round(dayGap) === 14) return FREQUENCY_LABEL.biweekly;
+    return FREQUENCY_LABEL.monthly;
+  };
 
   if (authLoading) {
     return (
@@ -175,33 +215,97 @@ export default function DashboardPage() {
               <p className="text-gray-600 dark:text-gray-400">No sessions yet</p>
             </GlowingCard>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 lg:gap-6">
-              {sessions.map((session) => (
-                <GlowingCard key={session.id} glow="purple">
-                  <div className="flex justify-between items-start mb-4">
-                    <h4 className="text-lg font-bold text-gray-900 dark:text-white">{session.title}</h4>
-                    <Badge color="green">{session.status}</Badge>
-                  </div>
-                  <p className="text-gray-600 dark:text-gray-400 text-sm mb-4">{session.description}</p>
-                  <div className="flex gap-2">
-                    <Link href={`/session/${session.id}`} className="flex-1">
-                      <GlowingButton variant="primary" className="w-full text-sm">
-                        View
-                      </GlowingButton>
-                    </Link>
-                  </div>
-                  {session.status === 'scheduled' && (
-                    <CancelSessionButton
-                      sessionId={session.id}
-                      scheduledAt={session.scheduled_at}
-                      onCancelled={() => {
-                        setSessions((prev) => prev.filter((s) => s.id !== session.id));
-                        setCancelledNotice('Session cancelled. Both participants have been notified.');
-                      }}
-                    />
-                  )}
-                </GlowingCard>
-              ))}
+            <div className="space-y-6">
+              {seriesGroups.length > 0 && (
+                <div className="space-y-4">
+                  {seriesGroups.map(([seriesId, occurrences]) => {
+                    const hasUpcoming = occurrences.some((s) => s.status === 'scheduled');
+                    return (
+                      <GlowingCard key={seriesId} glow="blue">
+                        <div className="flex justify-between items-start mb-3">
+                          <div>
+                            <h4 className="text-lg font-bold text-gray-900 dark:text-white">
+                              🔁 {occurrences[0].title}
+                            </h4>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                              {inferFrequency(occurrences)} · {occurrences.length} session{occurrences.length > 1 ? 's' : ''}
+                            </p>
+                          </div>
+                          {hasUpcoming && (
+                            <CancelSeriesButton
+                              seriesId={seriesId}
+                              onCancelled={() => {
+                                setSessions((prev) =>
+                                  prev.filter((s) => s.recurring_series_id !== seriesId)
+                                );
+                                setCancelledNotice('Recurring series cancelled. Both participants have been notified.');
+                              }}
+                            />
+                          )}
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                          {occurrences.map((session) => (
+                            <div
+                              key={session.id}
+                              className="flex items-center justify-between gap-2 p-2 rounded-lg bg-gray-100/50 dark:bg-dark-800/30 border border-gray-200/50 dark:border-gray-700/20"
+                            >
+                              <div className="min-w-0">
+                                <p className="text-sm text-gray-900 dark:text-white truncate">
+                                  {session.scheduled_at
+                                    ? new Date(session.scheduled_at).toLocaleString(undefined, {
+                                        month: 'short',
+                                        day: 'numeric',
+                                        hour: 'numeric',
+                                        minute: '2-digit',
+                                      })
+                                    : 'No date'}
+                                </p>
+                                <Badge color={session.status === 'cancelled' ? 'red' : 'green'}>
+                                  {session.status}
+                                </Badge>
+                              </div>
+                              <Link href={`/session/${session.id}`}>
+                                <GlowingButton variant="secondary" className="text-xs py-1.5 px-3">
+                                  View
+                                </GlowingButton>
+                              </Link>
+                            </div>
+                          ))}
+                        </div>
+                      </GlowingCard>
+                    );
+                  })}
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 lg:gap-6">
+                {standaloneSessions.map((session) => (
+                  <GlowingCard key={session.id} glow="purple">
+                    <div className="flex justify-between items-start mb-4">
+                      <h4 className="text-lg font-bold text-gray-900 dark:text-white">{session.title}</h4>
+                      <Badge color="green">{session.status}</Badge>
+                    </div>
+                    <p className="text-gray-600 dark:text-gray-400 text-sm mb-4">{session.description}</p>
+                    <div className="flex gap-2">
+                      <Link href={`/session/${session.id}`} className="flex-1">
+                        <GlowingButton variant="primary" className="w-full text-sm">
+                          View
+                        </GlowingButton>
+                      </Link>
+                    </div>
+                    {session.status === 'scheduled' && (
+                      <CancelSessionButton
+                        sessionId={session.id}
+                        scheduledAt={session.scheduled_at}
+                        onCancelled={() => {
+                          setSessions((prev) => prev.filter((s) => s.id !== session.id));
+                          setCancelledNotice('Session cancelled. Both participants have been notified.');
+                        }}
+                      />
+                    )}
+                  </GlowingCard>
+                ))}
+              </div>
             </div>
           )}
         </div>

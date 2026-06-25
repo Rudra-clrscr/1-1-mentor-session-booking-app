@@ -1,5 +1,5 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
-import { ApiResponse, User, Session, Message, MessageAttachment } from '@/types';
+import { ApiResponse, User, Session, Message, MessageAttachment, RecurringSeries, RecurrenceFrequency } from '@/types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
@@ -76,6 +76,30 @@ class ApiClient {
   // Session endpoints
   async createSession(data: Partial<Session>): Promise<ApiResponse<Session>> {
     return this.client.post('/sessions', data);
+  }
+
+  // Recurring session endpoints
+  async createRecurringSeries(data: {
+    title: string;
+    description?: string;
+    topic?: string;
+    scheduled_at: string;
+    duration_minutes?: number;
+    language?: string;
+    code_language?: string;
+    recording_enabled?: boolean;
+    frequency: RecurrenceFrequency;
+    occurrences: number;
+  }): Promise<ApiResponse<{ series: RecurringSeries; sessions: Session[]; skipped: string[] }>> {
+    return this.client.post('/recurring-sessions', data);
+  }
+
+  async getRecurringSeries(id: string): Promise<ApiResponse<{ series: RecurringSeries; sessions: Session[] }>> {
+    return this.client.get(`/recurring-sessions/${id}`);
+  }
+
+  async cancelRecurringSeries(id: string, reason?: string): Promise<ApiResponse<any>> {
+    return this.client.post(`/recurring-sessions/${id}/cancel`, { reason });
   }
 
   async getSession(id: string): Promise<ApiResponse<Session>> {
