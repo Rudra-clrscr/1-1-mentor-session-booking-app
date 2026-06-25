@@ -192,7 +192,7 @@ class ApiClient {
     return this.client.get('/profile');
   }
 
-  async updateProfile(data: { name?: string; bio?: string; avatar_url?: string; hourly_rate?: number; skills?: any[]; email_notifications_enabled?: boolean }): Promise<ApiResponse<any>> {
+  async updateProfile(data: { name?: string; bio?: string; avatar_url?: string; hourly_rate?: number; industry?: string; language?: string; skills?: any[]; email_notifications_enabled?: boolean }): Promise<ApiResponse<any>> {
     return this.client.put('/profile', data);
   }
 
@@ -200,8 +200,18 @@ class ApiClient {
     return this.client.get(`/profile/${userId}`);
   }
 
-  async getAllMentors(): Promise<ApiResponse<any[]>> {
-    return this.client.get('/profile/mentors/all');
+  async getAllMentors(params?: {
+    search?: string;
+    skills?: string;
+    minRating?: number;
+    maxPrice?: number;
+    industry?: string;
+    language?: string;
+    sortBy?: 'rating' | 'most_booked' | 'newest';
+    page?: number;
+    limit?: number;
+  }): Promise<ApiResponse<any[]> & { pagination?: { page: number; limit: number; total: number; totalPages: number } }> {
+    return this.client.get('/profile/mentors/all', { params });
   }
 
   async addSkill(skill: string): Promise<ApiResponse<any>> {

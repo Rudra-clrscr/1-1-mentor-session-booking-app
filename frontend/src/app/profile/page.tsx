@@ -33,6 +33,8 @@ export default function ProfilePage() {
     name: '',
     bio: '',
     avatar_url: '',
+    industry: '',
+    language: '',
     skills: [] as Skill[],
     email_notifications_enabled: true,
     timezone: '',
@@ -65,6 +67,8 @@ export default function ProfilePage() {
             name: profileData.name || '',
             bio: profileData.bio || '',
             avatar_url: profileData.avatar_url || '',
+            industry: profileData.industry || '',
+            language: profileData.language || '',
             skills: profileData.skills || [],
             email_notifications_enabled: profileData.email_notifications_enabled !== false,
             timezone: profileData.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -128,6 +132,8 @@ export default function ProfilePage() {
           name: response.data.name || '',
           bio: response.data.bio || '',
           avatar_url: response.data.avatar_url || '',
+          industry: response.data.industry || '',
+          language: response.data.language || '',
           skills: response.data.skills || [],
           email_notifications_enabled: response.data.email_notifications_enabled !== false,
           timezone: response.data.timezone || formData.timezone,
@@ -199,6 +205,14 @@ export default function ProfilePage() {
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">About</h3>
                 <p className="text-gray-700 dark:text-gray-300">{profile.bio}</p>
+              </div>
+            )}
+
+            {/* Industry & Language */}
+            {(formData.industry || formData.language) && (
+              <div className="flex flex-wrap gap-4 text-sm text-gray-600 dark:text-gray-400">
+                {formData.industry && <span>🏷️ Industry: {formData.industry}</span>}
+                {formData.language && <span>🌐 Language: {formData.language}</span>}
               </div>
             )}
 
@@ -305,6 +319,25 @@ export default function ProfilePage() {
                     </option>
                   ))}
                 </select>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <GlowingInput
+                  label="Industry"
+                  type="text"
+                  name="industry"
+                  placeholder="e.g. Fintech, Healthcare"
+                  value={formData.industry}
+                  onChange={handleInputChange}
+                />
+                <GlowingInput
+                  label="Language"
+                  type="text"
+                  name="language"
+                  placeholder="e.g. English, Spanish"
+                  value={formData.language}
+                  onChange={handleInputChange}
+                />
               </div>
 
               <label className="flex items-center gap-3 cursor-pointer">
