@@ -1,5 +1,5 @@
 import { Router, Response } from 'express';
-import { query } from '@/database';
+import { query, queryOne } from '@/database';
 import authMiddleware, { AuthRequest } from '@/middleware/auth';
 import { requireRole } from '@/middleware/requireRole';
 
@@ -140,6 +140,89 @@ router.post('/moderation/flag/:sessionId', async (req: AuthRequest, res: Respons
   } catch (error) {
     console.error('Error flagging session:', error);
     res.status(500).json({ error: 'Failed to flag session' });
+  }
+});
+
+// Get mentors for verification review
+router.get('/mentors/verification', async (req: AuthRequest, res: Response) => {
+  try {
+    const { status, search } = req.query;
+    let sql = `SELECT id, name, email, bio, hourly_rate, verified, verification_date, created_at
+               FROM users WHERE role = 'mentor'`;
+    const params: any[] = [];
+
+    if (status === 'pending') {
+      sql += ' AND verified = false';
+    } else if (status === 'verified') {
+      sql += ' AND verified = true';
+    }
+
+    if (search) {
+      sql += ` AND (name ILIKE $${params.length + 1} OR email ILIKE $${params.length + 1})`;
+      params.push(`%${search}%`);
+    }
+
+    sql += ' ORDER BY verified ASC, created_at DESC';
+
+    const result = await query(sql, params);
+    res.json({ success: true, data: result.rows });
+  } catch (error) {
+    console.error('Error fetching mentors for verification:', error);
+    res.status(500).json({ error: 'Failed to fetch mentors' });
+  }
+});
+
+// Verify or unverify a mentor
+router.patch('/mentors/:userId/verify', async (req: AuthRequest, res: Response) => {
+  try {
+    const { userId } = req.params;
+    const { verified, note } = req.body;
+    const adminId = req.user?.id;
+
+    if (typeof verified !== 'boolean') {
+      return res.status(400).json({ error: 'verified must be a boolean' });
+    }
+
+    const mentor = await queryOne(`SELECT id FROM users WHERE id = $1 AND role = 'mentor'`, [userId]);
+    if (!mentor) {
+      return res.status(404).json({ error: 'Mentor not found' });
+    }
+
+    await query(
+      `UPDATE users SET verified = $1, verification_date = $2, updated_at = NOW() WHERE id = $3`,
+      [verified, verified ? new Date().toISOString() : null, userId]
+    );
+
+    await query(
+      `INSERT INTO admin_audit_log (admin_id, action, target_user_id, note)
+       VALUES ($1, $2, $3, $4)`,
+      [adminId, verified ? 'mentor_verified' : 'mentor_unverified', userId, note ?? null]
+    );
+
+    res.json({ success: true, message: verified ? 'Mentor verified' : 'Mentor verification revoked' });
+  } catch (error) {
+    console.error('Error updating mentor verification:', error);
+    res.status(500).json({ error: 'Failed to update verification status' });
+  }
+});
+
+// Get verification audit log
+router.get('/audit-log', async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await query(`
+      SELECT l.id, l.action, l.note, l.created_at,
+             a.name AS admin_name, t.name AS target_name, t.email AS target_email
+      FROM admin_audit_log l
+      JOIN users a ON l.admin_id = a.id
+      JOIN users t ON l.target_user_id = t.id
+      ORDER BY l.created_at DESC
+      LIMIT 200
+    `);
+
+    res.json({ success: true, data: result.rows });
+  } catch (error) {
+    console.error('Error fetching audit log:', error);
+    res.status(500).json({ error: 'Failed to fetch audit log' });
   }
 });
 

@@ -1,13 +1,13 @@
 import { buildMentorSearchPlan } from './mentorSearch';
 
 describe('buildMentorSearchPlan', () => {
-  it('defaults to page 1, limit 12, sorted by rating, mentor-only filter', () => {
+  it('defaults to page 1, limit 12, sorted by rating, verified mentor-only filter', () => {
     const plan = buildMentorSearchPlan({});
     expect(plan.page).toBe(1);
     expect(plan.limit).toBe(12);
     expect(plan.offset).toBe(0);
     expect(plan.sortColumn).toBe('u.avg_rating');
-    expect(plan.whereClause).toBe(`u.role = 'mentor'`);
+    expect(plan.whereClause).toBe(`u.role = 'mentor' AND u.verified = true`);
     expect(plan.params).toEqual([]);
   });
 

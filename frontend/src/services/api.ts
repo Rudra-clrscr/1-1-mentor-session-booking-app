@@ -386,6 +386,18 @@ class ApiClient {
     return this.client.get('/admin/reports');
   }
 
+  async getMentorsForVerification(params?: { status?: 'pending' | 'verified' | 'all'; search?: string }): Promise<ApiResponse<any[]>> {
+    return this.client.get('/admin/mentors/verification', { params });
+  }
+
+  async setMentorVerification(userId: string, verified: boolean, note?: string): Promise<ApiResponse<any>> {
+    return this.client.patch(`/admin/mentors/${userId}/verify`, { verified, note });
+  }
+
+  async getAuditLog(): Promise<ApiResponse<any[]>> {
+    return this.client.get('/admin/audit-log');
+  }
+
   // Video Conference endpoints
   async generateVideoCode(sessionId: string): Promise<ApiResponse<{ code: string }>> {
     return this.client.post(`/sessions/${sessionId}/video-code`, {});

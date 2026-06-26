@@ -31,7 +31,7 @@ export function buildMentorSearchPlan(query: MentorSearchQuery): MentorSearchPla
     ? query.skills.split(',').map((s) => s.trim()).filter(Boolean)
     : [];
 
-  const conditions: string[] = [`u.role = 'mentor'`];
+  const conditions: string[] = [`u.role = 'mentor'`, `u.verified = true`];
   const params: any[] = [];
 
   if (query.search) {
