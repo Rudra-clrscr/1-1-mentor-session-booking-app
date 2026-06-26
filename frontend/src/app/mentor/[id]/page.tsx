@@ -197,7 +197,12 @@ export default function MentorProfilePage() {
 
         {/* ── Availability ── */}
         <section>
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Availability</h2>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-1">Availability</h2>
+          {mentor?.timezone && (
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              🌐 Times shown in mentor's timezone: {mentor.timezone}
+            </p>
+          )}
           {sortedSlots.length > 0 ? (
             <div className="flex flex-wrap gap-2">
               {sortedSlots.map((slot) => (

@@ -37,7 +37,8 @@ export default function SignupPage() {
     }
 
     try {
-      await signup(formData);
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      await signup({ ...formData, timezone });
       router.push('/dashboard');
     } catch (err: any) {
       setFormError(err.message || 'Signup failed');

@@ -35,7 +35,16 @@ export default function ProfilePage() {
     avatar_url: '',
     skills: [] as Skill[],
     email_notifications_enabled: true,
+    timezone: '',
   });
+  const timezoneOptions = (() => {
+    try {
+      // @ts-ignore - supportedValuesOf isn't in older TS lib targets
+      return Intl.supportedValuesOf('timeZone') as string[];
+    } catch {
+      return [Intl.DateTimeFormat().resolvedOptions().timeZone];
+    }
+  })();
   const [newSkill, setNewSkill] = useState<Skill>({
     skill_name: '',
     proficiency_level: 'intermediate',
@@ -58,6 +67,7 @@ export default function ProfilePage() {
             avatar_url: profileData.avatar_url || '',
             skills: profileData.skills || [],
             email_notifications_enabled: profileData.email_notifications_enabled !== false,
+            timezone: profileData.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
           });
         } else {
           setError('Failed to load profile');
@@ -120,6 +130,7 @@ export default function ProfilePage() {
           avatar_url: response.data.avatar_url || '',
           skills: response.data.skills || [],
           email_notifications_enabled: response.data.email_notifications_enabled !== false,
+          timezone: response.data.timezone || formData.timezone,
         });
         setEditing(false);
       } else {
@@ -173,6 +184,9 @@ export default function ProfilePage() {
                 <p className="text-sm text-gray-500 dark:text-gray-400">{profile?.email}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
                   📧 Email notifications: {formData.email_notifications_enabled ? 'On' : 'Off'}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-500">
+                  🌐 Timezone: {formData.timezone}
                 </p>
               </div>
               <GlowingButton onClick={() => setEditing(true)} className="w-full md:w-auto">
@@ -273,6 +287,24 @@ export default function ProfilePage() {
                   rows={4}
                   className="w-full px-4 py-3 bg-white dark:bg-dark-800/50 border border-gray-300 dark:border-gray-700/50 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Timezone
+                </label>
+                <select
+                  name="timezone"
+                  value={formData.timezone}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, timezone: e.target.value }))}
+                  className="w-full px-4 py-3 bg-white dark:bg-dark-800/50 border border-gray-300 dark:border-gray-700/50 rounded-lg text-gray-900 dark:text-white focus:border-primary-500 focus:ring-2 focus:ring-primary-500/50 transition-all duration-200"
+                >
+                  {timezoneOptions.map((tz) => (
+                    <option key={tz} value={tz}>
+                      {tz}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <label className="flex items-center gap-3 cursor-pointer">

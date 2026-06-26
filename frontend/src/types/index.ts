@@ -8,6 +8,7 @@ export interface User {
   role: UserRole;
   avatar_url?: string;
   bio?: string;
+  timezone?: string;
   verified: boolean;
   created_at: string;
   updated_at: string;
@@ -232,6 +233,7 @@ export interface AuthCredentials {
 export interface SignupData extends AuthCredentials {
   name: string;
   role: UserRole;
+  timezone?: string;
 }
 
 export interface AuthContext {
