@@ -5,6 +5,7 @@ import authMiddleware, { AuthRequest } from '@/middleware/auth';
 import { requireRole } from '@/middleware/requireRole';
 import { v4 as uuidv4 } from 'uuid';
 import { sendEmail } from '@/services/emailService';
+import { resolveJoinDecision } from '@/utils/sessionBooking';
 
 class HttpError extends Error {
   constructor(public statusCode: number, message: string) {
@@ -165,20 +166,14 @@ router.post('/:id/join', authMiddleware, requireRole('student'), async (req: Aut
 
       const session = lockResult.rows[0];
 
-      if (session.mentor_id === studentId) {
-        throw new HttpError(400, 'Mentors cannot join their own sessions');
+      const decision = resolveJoinDecision(session, studentId as string);
+
+      if (decision.action === 'reject') {
+        throw new HttpError(decision.status, decision.error);
       }
 
-      if (session.status === 'completed' || session.status === 'cancelled') {
-        throw new HttpError(400, 'This session is no longer available to join');
-      }
-
-      if (session.student_id === studentId) {
+      if (decision.action === 'noop') {
         return { session, justBooked: false };
-      }
-
-      if (session.student_id) {
-        throw new HttpError(409, 'This session has already been joined by another student');
       }
 
       await client.query(
