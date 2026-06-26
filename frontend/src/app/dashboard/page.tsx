@@ -234,6 +234,9 @@ export default function DashboardPage() {
                           {hasUpcoming && (
                             <CancelSeriesButton
                               seriesId={seriesId}
+                              nextOccurrenceAt={
+                                occurrences.find((s) => s.status === 'scheduled')?.scheduled_at ?? undefined
+                              }
                               onCancelled={() => {
                                 setSessions((prev) =>
                                   prev.filter((s) => s.recurring_series_id !== seriesId)

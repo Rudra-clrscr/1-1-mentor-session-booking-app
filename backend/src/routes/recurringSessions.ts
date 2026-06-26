@@ -6,6 +6,7 @@ import { requireRole } from '@/middleware/requireRole';
 import { v4 as uuidv4 } from 'uuid';
 import { sendEmail } from '@/services/emailService';
 import { mentorAvailabilityRoom } from '@/socket/handlers/mentorAvailability';
+import { isWithinCancellationWindow } from '@/utils/cancellationPolicy';
 
 const router = Router();
 
@@ -214,6 +215,7 @@ router.post('/:id/cancel', authMiddleware, async (req: AuthRequest, res: Respons
   const { id } = req.params;
   const userId = req.user?.id;
   const { reason } = req.body as { reason?: string };
+  const minNoticeHours = parseInt(process.env.MIN_CANCEL_NOTICE_HOURS ?? '2', 10);
 
   try {
     const series = await queryOne('SELECT * FROM recurring_series WHERE id = $1', [id]);
@@ -227,6 +229,21 @@ router.post('/:id/cancel', authMiddleware, async (req: AuthRequest, res: Respons
 
     if (series.status === 'cancelled') {
       return res.status(400).json({ error: 'This series is already cancelled' });
+    }
+
+    // Same minimum-notice rule as single-session cancellation, applied to
+    // the soonest upcoming occurrence — that's the one whose participant
+    // would otherwise be blindsided by a last-minute series cancellation.
+    const nextOccurrenceRow = await queryOne<{ scheduled_at: string }>(
+      `SELECT scheduled_at FROM sessions
+       WHERE recurring_series_id = $1 AND status = 'scheduled' AND scheduled_at IS NOT NULL
+       ORDER BY scheduled_at ASC LIMIT 1`,
+      [id]
+    );
+    if (nextOccurrenceRow?.scheduled_at && isWithinCancellationWindow(nextOccurrenceRow.scheduled_at, minNoticeHours)) {
+      return res.status(400).json({
+        error: `The next occurrence starts too soon to cancel — series cancellations require at least ${minNoticeHours} hours' notice before the next session`,
+      });
     }
 
     const now = new Date().toISOString();

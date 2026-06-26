@@ -7,6 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { sendEmail } from '@/services/emailService';
 import { resolveJoinDecision } from '@/utils/sessionBooking';
 import { mentorAvailabilityRoom } from '@/socket/handlers/mentorAvailability';
+import { isWithinCancellationWindow } from '@/utils/cancellationPolicy';
 
 class HttpError extends Error {
   constructor(public statusCode: number, message: string) {
@@ -707,14 +708,10 @@ router.post('/:id/cancel', authMiddleware, async (req: AuthRequest, res: Respons
       });
     }
 
-    if (session.scheduled_at) {
-      const hoursUntil =
-        (new Date(session.scheduled_at as string).getTime() - Date.now()) / (1000 * 60 * 60);
-      if (hoursUntil < minNoticeHours) {
-        return res.status(400).json({
-          error: `Sessions must be cancelled at least ${minNoticeHours} hours before they start`,
-        });
-      }
+    if (session.scheduled_at && isWithinCancellationWindow(session.scheduled_at as string, minNoticeHours)) {
+      return res.status(400).json({
+        error: `Sessions must be cancelled at least ${minNoticeHours} hours before they start`,
+      });
     }
 
     const now = new Date().toISOString();
