@@ -7,6 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { sendEmail } from '@/services/emailService';
 import { mentorAvailabilityRoom } from '@/socket/handlers/mentorAvailability';
 import { isWithinCancellationWindow } from '@/utils/cancellationPolicy';
+import { validateSessionInput } from '@/utils/sessionValidation';
 
 const router = Router();
 
@@ -66,6 +67,11 @@ router.post('/', authMiddleware, requireRole('mentor'), async (req: AuthRequest,
 
     if (!title || !scheduled_at) {
       return res.status(400).json({ error: 'title and scheduled_at are required' });
+    }
+
+    const validation = validateSessionInput({ title, scheduled_at, duration_minutes });
+    if (!validation.valid) {
+      return res.status(400).json({ error: validation.error });
     }
 
     if (!FREQUENCIES.includes(frequency)) {

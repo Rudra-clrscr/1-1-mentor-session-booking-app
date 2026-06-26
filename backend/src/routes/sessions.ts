@@ -8,6 +8,7 @@ import { sendEmail } from '@/services/emailService';
 import { resolveJoinDecision } from '@/utils/sessionBooking';
 import { mentorAvailabilityRoom } from '@/socket/handlers/mentorAvailability';
 import { isWithinCancellationWindow } from '@/utils/cancellationPolicy';
+import { validateSessionInput } from '@/utils/sessionValidation';
 
 class HttpError extends Error {
   constructor(public statusCode: number, message: string) {
@@ -30,6 +31,11 @@ router.post('/', authMiddleware, requireRole('mentor'), async (req: AuthRequest,
   try {
     const { title, description, topic, scheduled_at, duration_minutes, language, code_language, recording_enabled } =
       req.body;
+
+    const validation = validateSessionInput({ title, scheduled_at, duration_minutes });
+    if (!validation.valid) {
+      return res.status(400).json({ error: validation.error });
+    }
 
     const sessionId = uuidv4();
     const now = new Date().toISOString();
