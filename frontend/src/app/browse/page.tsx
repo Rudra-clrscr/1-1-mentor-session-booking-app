@@ -11,6 +11,7 @@ import {
   Badge,
   Avatar,
   LoadingSpinner,
+  ErrorRetryBanner,
 } from '@/components/ui/GlowingComponents';
 
 export default function BrowsePage() {
@@ -18,32 +19,33 @@ export default function BrowsePage() {
   const [mentors, setMentors] = useState<User[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [selectedMentor, setSelectedMentor] = useState<string | null>(null);
   const [filterLanguage, setFilterLanguage] = useState<string>('');
 
   useEffect(() => {
     if (!user) return;
-
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const [mentorsRes, sessionsRes] = await Promise.all([
-          apiClient.getMentors(),
-          apiClient.getAvailableSessions(),
-        ]);
-
-        setMentors(mentorsRes.data || []);
-        setSessions(sessionsRes.data || []);
-        console.log('Loaded sessions:', sessionsRes.data?.length || 0);
-      } catch (err) {
-        console.error('Error fetching data:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchData();
   }, [user]);
+
+  const fetchData = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const [mentorsRes, sessionsRes] = await Promise.all([
+        apiClient.getMentors(),
+        apiClient.getAvailableSessions(),
+      ]);
+
+      setMentors(mentorsRes.data || []);
+      setSessions(sessionsRes.data || []);
+    } catch (err: any) {
+      console.error('Error fetching data:', err);
+      setError(err.response?.data?.error || err.message || 'Failed to load mentors and sessions');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Filter sessions by mentor and language
   const filteredSessions = sessions.filter((session) => {
@@ -76,6 +78,8 @@ export default function BrowsePage() {
       </header>
 
       <main className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 md:py-8">
+        {error && <ErrorRetryBanner message={error} onRetry={fetchData} />}
+
         {/* Filter Section */}
         <div className="mb-6 md:mb-8 flex flex-col sm:flex-row gap-2 md:gap-4">
           <div className="flex-1 min-w-0">

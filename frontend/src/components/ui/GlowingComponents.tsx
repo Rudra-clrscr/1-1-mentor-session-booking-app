@@ -117,6 +117,31 @@ export function Badge({
   );
 }
 
+export function ErrorRetryBanner({
+  message,
+  onRetry,
+  className = '',
+}: {
+  message: string;
+  onRetry: () => void;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`mb-6 p-4 bg-red-900/20 border border-red-700/50 rounded-lg text-red-400 text-sm flex items-center justify-between gap-4 ${className}`}
+    >
+      <span>{message}</span>
+      <button
+        type="button"
+        onClick={onRetry}
+        className="shrink-0 px-3 py-1.5 rounded-md border border-red-700/50 text-red-300 hover:bg-red-900/30 transition-colors font-medium"
+      >
+        Retry
+      </button>
+    </div>
+  );
+}
+
 export function LoadingSpinner() {
   return (
     <div className="flex justify-center items-center">

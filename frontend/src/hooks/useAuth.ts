@@ -6,8 +6,16 @@ import { User, AuthCredentials, SignupData } from '@/types';
 
 export function useAuth() {
   const { user, token, setUser, setToken, setLoading, logout } = useAuthStore();
-  const [isLoading, setIsLoading] = useState(false);
+  // If a token is stashed in localStorage but the store hasn't hydrated a
+  // user yet, we're about to verify that session — start "loading" so
+  // consumers (e.g. the protected-route guard) don't treat this render's
+  // default not-authenticated state as a real logged-out state and redirect
+  // before the verification request has even gone out.
+  const [isLoading, setIsLoading] = useState(
+    () => typeof window !== 'undefined' && !!localStorage.getItem('auth_token') && !user
+  );
   const [error, setError] = useState<string | null>(null);
+  const [sessionError, setSessionError] = useState<string | null>(null);
 
   useEffect(() => {
     // Check if user is already logged in
@@ -22,13 +30,22 @@ export function useAuth() {
   const getCurrentUser = async () => {
     try {
       setIsLoading(true);
+      setSessionError(null);
       const response = await apiClient.getCurrentUser();
       if (response.data) {
         setUser(response.data as User);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error getting current user:', err);
-      logout();
+      // Only a confirmed-invalid token (401) should log the user out — a
+      // network error or 5xx here just means we couldn't verify the
+      // existing session, not that it's invalid, so keep it intact and let
+      // the caller offer a retry instead of bouncing to /login.
+      if (err.response?.status === 401) {
+        logout();
+      } else {
+        setSessionError(err.response?.data?.error || err.message || 'Failed to verify your session');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -102,6 +119,8 @@ export function useAuth() {
     token,
     isLoading,
     error,
+    sessionError,
+    retrySession: getCurrentUser,
     isAuthenticated: !!user,
     login,
     signup,

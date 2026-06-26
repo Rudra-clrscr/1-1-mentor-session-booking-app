@@ -4,36 +4,38 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { apiClient } from '@/services/api';
-import { GlowingButton, GlowingCard, Badge, LoadingSpinner, Avatar } from '@/components/ui/GlowingComponents';
+import { GlowingButton, GlowingCard, Badge, LoadingSpinner, Avatar, ErrorRetryBanner } from '@/components/ui/GlowingComponents';
 
 export default function EarningsPage() {
   const { user, isLoading: authLoading } = useAuth();
   const [earnings, setEarnings] = useState<any>(null);
   const [payments, setPayments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     if (!user?.id || user.role !== 'mentor') return;
-
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const [earningsRes, paymentsRes] = await Promise.all([
-          apiClient.getEarnings(),
-          apiClient.getPaymentHistory(),
-        ]);
-
-        setEarnings(earningsRes.data);
-        setPayments(paymentsRes.data || []);
-      } catch (err) {
-        console.error('Error fetching earnings:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchData();
   }, [user?.id, user?.role]);
+
+  const fetchData = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const [earningsRes, paymentsRes] = await Promise.all([
+        apiClient.getEarnings(),
+        apiClient.getPaymentHistory(),
+      ]);
+
+      setEarnings(earningsRes.data);
+      setPayments(paymentsRes.data || []);
+    } catch (err: any) {
+      console.error('Error fetching earnings:', err);
+      setError(err.response?.data?.error || err.message || 'Failed to load earnings');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (authLoading || loading) {
     return (
@@ -68,6 +70,7 @@ export default function EarningsPage() {
       </header>
 
       <main className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-6 md:py-8">
+        {error && <ErrorRetryBanner message={error} onRetry={fetchData} />}
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-8">
           <GlowingCard glow="green">

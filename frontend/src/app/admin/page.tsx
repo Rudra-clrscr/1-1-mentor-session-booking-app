@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { apiClient } from '@/services/api';
-import { GlowingButton, GlowingCard, Badge, LoadingSpinner } from '@/components/ui/GlowingComponents';
+import { GlowingButton, GlowingCard, Badge, LoadingSpinner, ErrorRetryBanner } from '@/components/ui/GlowingComponents';
 
 type AdminUser = {
   id: string;
@@ -76,98 +76,112 @@ export default function AdminDashboardPage() {
   const [auditLog, setAuditLog] = useState<AuditLogEntry[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'sessions' | 'moderation' | 'verification'>('overview');
 
   const isAdmin = !!user && user.role === 'admin';
+
+  const fetchStats = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const response = await apiClient.getAdminStats();
+      setStats(response.data);
+    } catch (err: any) {
+      console.error('Error fetching stats:', err);
+      setError(err.response?.data?.error || err.message || 'Failed to load admin stats');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchUsers = async () => {
+    setError('');
+    try {
+      const response = await apiClient.getAdminUsers(search || undefined);
+      setUsers(response.data || []);
+    } catch (err: any) {
+      console.error('Error fetching users:', err);
+      setError(err.response?.data?.error || err.message || 'Failed to load users');
+    }
+  };
+
+  const fetchSessions = async () => {
+    setError('');
+    try {
+      const response = await apiClient.getAdminSessions();
+      setSessions(response.data || []);
+    } catch (err: any) {
+      console.error('Error fetching sessions:', err);
+      setError(err.response?.data?.error || err.message || 'Failed to load sessions');
+    }
+  };
+
+  const fetchModeration = async () => {
+    setError('');
+    try {
+      const [queueRes, reportsRes] = await Promise.all([
+        apiClient.getModerationQueue(),
+        apiClient.getReports(),
+      ]);
+      setQueue(queueRes.data || []);
+      setReports(reportsRes.data || []);
+    } catch (err: any) {
+      console.error('Error fetching moderation data:', err);
+      setError(err.response?.data?.error || err.message || 'Failed to load moderation data');
+    }
+  };
+
+  const fetchVerification = async () => {
+    setError('');
+    try {
+      const [mentorsRes, auditRes] = await Promise.all([
+        apiClient.getMentorsForVerification({ status: verificationStatus }),
+        apiClient.getAuditLog(),
+      ]);
+      setVerificationMentors(mentorsRes.data || []);
+      setAuditLog(auditRes.data || []);
+    } catch (err: any) {
+      console.error('Error fetching verification data:', err);
+      setError(err.response?.data?.error || err.message || 'Failed to load verification data');
+    }
+  };
 
   useEffect(() => {
     // Not an admin (or not logged in) — nothing to fetch, and there's no
     // loading state to resolve, so the access-denied check below can render
     // immediately instead of hanging on the spinner forever.
     if (!isAdmin) return;
-
-    const fetchStats = async () => {
-      setLoading(true);
-      try {
-        const response = await apiClient.getAdminStats();
-        setStats(response.data);
-      } catch (err) {
-        console.error('Error fetching stats:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchStats();
   }, [isAdmin]);
 
   useEffect(() => {
     if (!isAdmin || activeTab !== 'users') return;
-
-    const fetchUsers = async () => {
-      try {
-        const response = await apiClient.getAdminUsers(search || undefined);
-        setUsers(response.data || []);
-      } catch (err) {
-        console.error('Error fetching users:', err);
-      }
-    };
-
     fetchUsers();
   }, [isAdmin, activeTab, search]);
 
   useEffect(() => {
     if (!isAdmin || activeTab !== 'sessions') return;
-
-    const fetchSessions = async () => {
-      try {
-        const response = await apiClient.getAdminSessions();
-        setSessions(response.data || []);
-      } catch (err) {
-        console.error('Error fetching sessions:', err);
-      }
-    };
-
     fetchSessions();
   }, [isAdmin, activeTab]);
 
   useEffect(() => {
     if (!isAdmin || activeTab !== 'moderation') return;
-
-    const fetchModeration = async () => {
-      try {
-        const [queueRes, reportsRes] = await Promise.all([
-          apiClient.getModerationQueue(),
-          apiClient.getReports(),
-        ]);
-        setQueue(queueRes.data || []);
-        setReports(reportsRes.data || []);
-      } catch (err) {
-        console.error('Error fetching moderation data:', err);
-      }
-    };
-
     fetchModeration();
   }, [isAdmin, activeTab]);
 
   useEffect(() => {
     if (!isAdmin || activeTab !== 'verification') return;
-
-    const fetchVerification = async () => {
-      try {
-        const [mentorsRes, auditRes] = await Promise.all([
-          apiClient.getMentorsForVerification({ status: verificationStatus }),
-          apiClient.getAuditLog(),
-        ]);
-        setVerificationMentors(mentorsRes.data || []);
-        setAuditLog(auditRes.data || []);
-      } catch (err) {
-        console.error('Error fetching verification data:', err);
-      }
-    };
-
     fetchVerification();
   }, [isAdmin, activeTab, verificationStatus]);
+
+  const retryActiveTab = () => {
+    if (activeTab === 'overview') fetchStats();
+    else if (activeTab === 'users') fetchUsers();
+    else if (activeTab === 'sessions') fetchSessions();
+    else if (activeTab === 'moderation') fetchModeration();
+    else if (activeTab === 'verification') fetchVerification();
+  };
 
   const handleVerifyToggle = async (mentor: MentorForVerification) => {
     try {
@@ -250,6 +264,8 @@ export default function AdminDashboardPage() {
             </button>
           ))}
         </div>
+
+        {error && <ErrorRetryBanner message={error} onRetry={retryActiveTab} />}
 
         {/* Overview Tab */}
         {activeTab === 'overview' && stats && (

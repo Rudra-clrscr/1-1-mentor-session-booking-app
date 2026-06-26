@@ -12,6 +12,7 @@ import {
   GlowingCard,
   Badge,
   LoadingSpinner,
+  ErrorRetryBanner,
 } from '@/components/ui/GlowingComponents';
 import { RatingsSection } from '@/components/RatingsSection';
 
@@ -53,6 +54,7 @@ export default function MentorProfilePage() {
   const [totalReviews, setTotalReviews] = useState(0);
   const [loading, setLoading] = useState(true);
   const [notFoundError, setNotFoundError] = useState(false);
+  const [fetchError, setFetchError] = useState('');
 
   // Re-fetches just the availability/sessions data, without touching the
   // mentor/ratings state — used both on initial mount and whenever the
@@ -76,39 +78,43 @@ export default function MentorProfilePage() {
 
   useEffect(() => {
     if (!mentorId) return;
-
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const mentorRes = await apiClient.getUser(mentorId);
-        const mentorData = mentorRes.data;
-
-        if (!mentorData || mentorData.role !== 'mentor') {
-          setNotFoundError(true);
-          return;
-        }
-        setMentor(mentorData);
-        setAvgRating(Number(mentorData.avg_rating ?? 0));
-        setTotalReviews(Number(mentorData.total_sessions ?? 0));
-
-        const ratingsResult = await apiClient.getRatings(mentorId).catch(() => null);
-        if (ratingsResult) {
-          const r = ratingsResult as any;
-          setRatings((r.data || []).slice(0, 5));
-          if (r.avg_rating !== undefined) setAvgRating(Number(r.avg_rating));
-          if (r.total_reviews !== undefined) setTotalReviews(Number(r.total_reviews));
-        }
-
-        await refetchAvailability();
-      } catch {
-        setNotFoundError(true);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchData();
   }, [mentorId]);
+
+  const fetchData = async () => {
+    setLoading(true);
+    setFetchError('');
+    try {
+      const mentorRes = await apiClient.getUser(mentorId);
+      const mentorData = mentorRes.data;
+
+      if (!mentorData || mentorData.role !== 'mentor') {
+        setNotFoundError(true);
+        return;
+      }
+      setMentor(mentorData);
+      setAvgRating(Number(mentorData.avg_rating ?? 0));
+      setTotalReviews(Number(mentorData.total_sessions ?? 0));
+
+      const ratingsResult = await apiClient.getRatings(mentorId).catch(() => null);
+      if (ratingsResult) {
+        const r = ratingsResult as any;
+        setRatings((r.data || []).slice(0, 5));
+        if (r.avg_rating !== undefined) setAvgRating(Number(r.avg_rating));
+        if (r.total_reviews !== undefined) setTotalReviews(Number(r.total_reviews));
+      }
+
+      await refetchAvailability();
+    } catch (err: any) {
+      // A failed request here (network error, 5xx, etc.) is not the same as
+      // the mentor genuinely not existing — surface a retryable error
+      // instead of routing into Next's 404 page.
+      console.error('Error fetching mentor profile:', err);
+      setFetchError(err.response?.data?.error || err.message || 'Failed to load mentor profile');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Watch this mentor's availability for live changes (booking/cancellation
   // by anyone, in any tab) so the slot list doesn't go stale until a reload.
@@ -139,6 +145,24 @@ export default function MentorProfilePage() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-dark-950 dark:via-dark-900 dark:to-dark-950 flex items-center justify-center">
         <LoadingSpinner />
+      </div>
+    );
+  }
+
+  if (fetchError) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-dark-950 dark:via-dark-900 dark:to-dark-950">
+        <header className="border-b border-gray-200 dark:border-gray-700/30 backdrop-blur-sm">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+            <h1 className="text-2xl font-bold gradient-text">Mentor Profile</h1>
+            <Link href="/browse">
+              <GlowingButton variant="outline" className="text-sm">Back to Browse</GlowingButton>
+            </Link>
+          </div>
+        </header>
+        <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <ErrorRetryBanner message={fetchError} onRetry={fetchData} />
+        </main>
       </div>
     );
   }

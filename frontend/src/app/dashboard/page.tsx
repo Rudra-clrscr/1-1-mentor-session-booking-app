@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { apiClient } from '@/services/api';
 import { Session, User } from '@/types';
-import { GlowingButton, GlowingCard, Badge, Avatar, LoadingSpinner } from '@/components/ui/GlowingComponents';
+import { GlowingButton, GlowingCard, Badge, Avatar, LoadingSpinner, ErrorRetryBanner } from '@/components/ui/GlowingComponents';
 import CancelSessionButton from '@/components/CancelSessionButton';
 import CancelSeriesButton from '@/components/CancelSeriesButton';
 
@@ -20,30 +20,32 @@ export default function DashboardPage() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [mentors, setMentors] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [cancelledNotice, setCancelledNotice] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
-
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const [sessionsRes, mentorsRes] = await Promise.all([
-          apiClient.getUserSessions(),
-          apiClient.getMentors(),
-        ]);
-
-        setSessions(sessionsRes.data || []);
-        setMentors(mentorsRes.data || []);
-      } catch (err) {
-        console.error('Error fetching data:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchData();
   }, [user]);
+
+  const fetchData = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const [sessionsRes, mentorsRes] = await Promise.all([
+        apiClient.getUserSessions(),
+        apiClient.getMentors(),
+      ]);
+
+      setSessions(sessionsRes.data || []);
+      setMentors(mentorsRes.data || []);
+    } catch (err: any) {
+      console.error('Error fetching data:', err);
+      setError(err.response?.data?.error || err.message || 'Failed to load your sessions');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const { seriesGroups, standaloneSessions } = useMemo(() => {
     const groups = new Map<string, Session[]>();
@@ -206,11 +208,12 @@ export default function DashboardPage() {
               </button>
             </div>
           )}
+          {error && <ErrorRetryBanner message={error} onRetry={fetchData} />}
           {loading ? (
             <div className="flex justify-center py-8">
               <LoadingSpinner />
             </div>
-          ) : sessions.length === 0 ? (
+          ) : error ? null : sessions.length === 0 ? (
             <GlowingCard glow="blue" className="text-center py-8">
               <p className="text-gray-600 dark:text-gray-400">No sessions yet</p>
             </GlowingCard>

@@ -10,6 +10,7 @@ import {
   Badge,
   Avatar,
   LoadingSpinner,
+  ErrorRetryBanner,
 } from '@/components/ui/GlowingComponents';
 
 const PAGE_SIZE = 12;
@@ -19,6 +20,7 @@ export default function AdvancedBrowsePage() {
   const [mentors, setMentors] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
@@ -46,6 +48,7 @@ export default function AdvancedBrowsePage() {
   const fetchMentors = async (targetPage: number, append: boolean) => {
     if (append) setLoadingMore(true);
     else setLoading(true);
+    setError('');
 
     try {
       const response = await apiClient.getAllMentors({
@@ -65,8 +68,9 @@ export default function AdvancedBrowsePage() {
       setMentors((prev) => (append ? [...prev, ...data] : data));
       setPage(targetPage);
       setTotalPages(pagination?.totalPages ?? 1);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to fetch mentors:', err);
+      setError(err.response?.data?.error || err.message || 'Failed to load mentors');
       if (!append) setMentors([]);
     } finally {
       setLoading(false);
@@ -246,11 +250,12 @@ export default function AdvancedBrowsePage() {
 
           {/* Mentors Grid */}
           <div className="lg:col-span-3">
+            {error && <ErrorRetryBanner message={error} onRetry={() => fetchMentors(1, false)} />}
             {loading ? (
               <div className="flex justify-center items-center min-h-96">
                 <LoadingSpinner />
               </div>
-            ) : mentors.length === 0 ? (
+            ) : error ? null : mentors.length === 0 ? (
               <GlowingCard glow="yellow" className="text-center py-12">
                 <p className="text-yellow-600 dark:text-yellow-400 text-lg mb-4">No mentors found</p>
                 <p className="text-gray-600 dark:text-gray-400 mb-6">

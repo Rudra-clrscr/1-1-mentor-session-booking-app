@@ -11,6 +11,7 @@ import {
   Avatar,
   Badge,
   LoadingSpinner,
+  ErrorRetryBanner,
 } from '@/components/ui/GlowingComponents';
 
 export default function CalendarPage() {
@@ -19,6 +20,7 @@ export default function CalendarPage() {
   const [availability, setAvailability] = useState<any[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [editing, setEditing] = useState(false);
 
   const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -29,29 +31,31 @@ export default function CalendarPage() {
 
   useEffect(() => {
     if (!user?.id) return;
-
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const startDate = new Date(month.getFullYear(), month.getMonth(), 1);
-        const endDate = new Date(month.getFullYear(), month.getMonth() + 1, 0);
-
-        const [availRes, sessionRes] = await Promise.all([
-          user.role === 'mentor' ? apiClient.getMentorAvailability(user.id) : Promise.resolve({ data: [] }),
-          apiClient.getSessionCalendar(user.id, startDate.toISOString(), endDate.toISOString()),
-        ]);
-
-        setAvailability(availRes.data || []);
-        setSessions(sessionRes.data || []);
-      } catch (err) {
-        console.error('Error fetching calendar data:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchData();
   }, [user?.id, month]);
+
+  const fetchData = async () => {
+    if (!user?.id) return;
+    setLoading(true);
+    setError('');
+    try {
+      const startDate = new Date(month.getFullYear(), month.getMonth(), 1);
+      const endDate = new Date(month.getFullYear(), month.getMonth() + 1, 0);
+
+      const [availRes, sessionRes] = await Promise.all([
+        user.role === 'mentor' ? apiClient.getMentorAvailability(user.id) : Promise.resolve({ data: [] }),
+        apiClient.getSessionCalendar(user.id, startDate.toISOString(), endDate.toISOString()),
+      ]);
+
+      setAvailability(availRes.data || []);
+      setSessions(sessionRes.data || []);
+    } catch (err: any) {
+      console.error('Error fetching calendar data:', err);
+      setError(err.response?.data?.error || err.message || 'Failed to load calendar data');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (authLoading || loading) {
     return (
@@ -85,6 +89,7 @@ export default function CalendarPage() {
       </header>
 
       <main className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-6 md:py-8">
+        {error && <ErrorRetryBanner message={error} onRetry={fetchData} />}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Calendar */}
           <div className="lg:col-span-2">
