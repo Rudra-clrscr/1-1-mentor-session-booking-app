@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import { query, queryOne } from '@/database';
 import authMiddleware, { AuthRequest } from '@/middleware/auth';
+import { buildMentorSearchPlan, MentorSearchQuery } from '@/utils/mentorSearch';
 
 const router = Router();
 
@@ -9,7 +10,7 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.id;
     const user = await queryOne(
-      `SELECT id, email, name, role, avatar_url, bio, hourly_rate, timezone,
+      `SELECT id, email, name, role, avatar_url, bio, hourly_rate, timezone, industry, language,
               total_sessions, avg_rating, verified, created_at, email_notifications_enabled
        FROM users WHERE id = $1`,
       [userId]
@@ -41,7 +42,7 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
 router.get('/:id', async (req: AuthRequest, res: Response) => {
   try {
     const user = await queryOne(
-      `SELECT id, email, name, role, avatar_url, bio, hourly_rate, timezone,
+      `SELECT id, email, name, role, avatar_url, bio, hourly_rate, timezone, industry, language,
               total_sessions, avg_rating, verified, created_at
        FROM users WHERE id = $1`,
       [req.params.id]
@@ -72,7 +73,7 @@ router.get('/:id', async (req: AuthRequest, res: Response) => {
 // Shared update handler
 const updateProfileHandler = async (req: AuthRequest, res: Response) => {
   try {
-    const { name, bio, avatar_url, hourly_rate, skills, email_notifications_enabled, timezone } = req.body;
+    const { name, bio, avatar_url, hourly_rate, skills, email_notifications_enabled, timezone, industry, language } = req.body;
     const userId = req.user?.id;
     const now = new Date().toISOString();
 
@@ -93,9 +94,11 @@ const updateProfileHandler = async (req: AuthRequest, res: Response) => {
            hourly_rate = COALESCE($4, hourly_rate),
            email_notifications_enabled = COALESCE($5, email_notifications_enabled),
            timezone = COALESCE($6, timezone),
-           updated_at = $7
-       WHERE id = $8`,
-      [name || null, bio || null, avatar_url || null, hourly_rate || null, email_notifications_enabled ?? null, timezone || null, now, userId]
+           industry = COALESCE($7, industry),
+           language = COALESCE($8, language),
+           updated_at = $9
+       WHERE id = $10`,
+      [name || null, bio || null, avatar_url || null, hourly_rate || null, email_notifications_enabled ?? null, timezone || null, industry || null, language || null, now, userId]
     );
 
     // Update skills if provided
@@ -117,7 +120,7 @@ const updateProfileHandler = async (req: AuthRequest, res: Response) => {
 
     // Fetch updated profile
     const updatedUser = await queryOne(
-      `SELECT id, email, name, role, avatar_url, bio, hourly_rate, timezone,
+      `SELECT id, email, name, role, avatar_url, bio, hourly_rate, timezone, industry, language,
               total_sessions, avg_rating, verified, created_at, email_notifications_enabled
        FROM users WHERE id = $1`,
       [userId]
@@ -205,32 +208,50 @@ router.delete('/skills/:skillName', authMiddleware, async (req: AuthRequest, res
   }
 });
 
-// Get all mentors with skills
+// Search/filter/sort/paginate mentors
 router.get('/mentors/all', async (req: AuthRequest, res: Response) => {
   try {
-    const mentors = await query(
-      `SELECT u.id, u.email, u.name, u.avatar_url, u.bio, u.hourly_rate, u.timezone,
-              u.total_sessions, u.avg_rating, u.verified, u.created_at
-       FROM users u
-       WHERE u.role = 'mentor'
-       ORDER BY u.avg_rating DESC, u.total_sessions DESC
-       LIMIT 100`
+    const { whereClause, params, sortColumn, page, limit, offset } = buildMentorSearchPlan(
+      req.query as MentorSearchQuery
     );
 
-    // Fetch skills for each mentor
-    const mentorsList = await Promise.all(
-      mentors.rows.map(async (mentor: any) => {
-        const skills = await query(
-          `SELECT skill_name, proficiency_level, years_experience FROM user_skills WHERE user_id = $1`,
-          [mentor.id]
-        );
-        return { ...mentor, skills: skills.rows };
-      })
+    const countResult = await queryOne(
+      `SELECT COUNT(*)::int AS total FROM users u WHERE ${whereClause}`,
+      params
+    );
+    const total = countResult?.total || 0;
+
+    params.push(limit);
+    params.push(offset);
+
+    const mentors = await query(
+      `SELECT u.id, u.email, u.name, u.avatar_url, u.bio, u.hourly_rate, u.timezone, u.industry, u.language,
+              u.total_sessions, u.avg_rating, u.verified, u.created_at,
+              COALESCE(
+                (SELECT json_agg(json_build_object(
+                   'skill_name', us.skill_name,
+                   'proficiency_level', us.proficiency_level,
+                   'years_experience', us.years_experience
+                 ))
+                 FROM user_skills us WHERE us.user_id = u.id),
+                '[]'
+              ) AS skills
+       FROM users u
+       WHERE ${whereClause}
+       ORDER BY ${sortColumn} DESC NULLS LAST, u.total_sessions DESC
+       LIMIT $${params.length - 1} OFFSET $${params.length}`,
+      params
     );
 
     res.json({
       success: true,
-      data: mentorsList,
+      data: mentors.rows,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.max(1, Math.ceil(total / limit)),
+      },
     });
   } catch (err) {
     console.error('Get mentors error:', err);
