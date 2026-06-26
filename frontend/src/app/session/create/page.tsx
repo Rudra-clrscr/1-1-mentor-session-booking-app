@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiClient } from '@/services/api';
 import { GlowingButton, GlowingInput, GlowingSelect, GlowingCard, LoadingSpinner } from '@/components/ui/GlowingComponents';
+import { formatSessionDateTime } from '@/utils/formatDateTime';
 
 export default function CreateSessionPage() {
   const router = useRouter();
@@ -280,7 +281,7 @@ export default function CreateSessionPage() {
                 <p className="font-medium mb-1">Series created, but {skippedDates.length} slot(s) were skipped due to conflicts:</p>
                 <ul className="list-disc pl-5 space-y-0.5">
                   {skippedDates.map((d) => (
-                    <li key={d}>{new Date(d).toLocaleString()}</li>
+                    <li key={d}>{formatSessionDateTime(d)}</li>
                   ))}
                 </ul>
                 <GlowingButton variant="primary" type="button" onClick={() => router.push('/dashboard')}>

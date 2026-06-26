@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer';
 import { config } from '@/config';
+import { formatSessionTime } from '@/utils/formatSessionTime';
 
 // ─── Transporter ─────────────────────────────────────────────────────────────
 
@@ -51,26 +52,19 @@ function buildReminderEmailHTML(params: {
   sessionTitle: string;
   sessionTopic?: string;
   scheduledAt: Date;
+  recipientTimezone?: string;
   minutesBefore: number;
   joinLink: string;
   role: 'mentor' | 'student';
 }): string {
-  const { recipientName, otherPartyName, sessionTitle, sessionTopic, scheduledAt, minutesBefore, joinLink, role } =
+  const { recipientName, otherPartyName, sessionTitle, sessionTopic, scheduledAt, recipientTimezone, minutesBefore, joinLink, role } =
     params;
 
   const timeLabel   = minutesBefore >= 60 ? `${minutesBefore / 60} hour(s)` : `${minutesBefore} minute(s)`;
   const urgencyColor = minutesBefore <= 30 ? '#ef4444' : '#8B5CF6';
   const urgencyEmoji = minutesBefore <= 30 ? '🔔' : '📅';
 
-  const formattedTime = scheduledAt.toLocaleString('en-US', {
-    weekday:    'long',
-    year:       'numeric',
-    month:      'long',
-    day:        'numeric',
-    hour:       '2-digit',
-    minute:     '2-digit',
-    timeZoneName: 'short',
-  });
+  const formattedTime = formatSessionTime(scheduledAt, recipientTimezone);
 
   const otherLabel = role === 'mentor' ? 'Student' : 'Mentor';
   const tagline    = role === 'student'
@@ -150,11 +144,12 @@ export async function sendSessionReminderEmail(params: {
   sessionTitle: string;
   sessionTopic?: string;
   scheduledAt: Date;
+  recipientTimezone?: string;
   minutesBefore: number;     // 1440 = 24h, 30 = 30min
   role: 'mentor' | 'student';
 }): Promise<boolean> {
   const { recipientEmail, recipientName, otherPartyName, sessionId,
-          sessionTitle, sessionTopic, scheduledAt, minutesBefore, role } = params;
+          sessionTitle, sessionTopic, scheduledAt, recipientTimezone, minutesBefore, role } = params;
 
   const joinLink  = `${config.CLIENT_URL}/session/${sessionId}`;
   const timeLabel = minutesBefore >= 60 ? `${minutesBefore / 60} hour(s)` : `${minutesBefore} minute(s)`;
@@ -162,7 +157,7 @@ export async function sendSessionReminderEmail(params: {
 
   const html = buildReminderEmailHTML({
     recipientName, otherPartyName, sessionTitle, sessionTopic,
-    scheduledAt, minutesBefore, joinLink, role,
+    scheduledAt, recipientTimezone, minutesBefore, joinLink, role,
   });
 
   return sendEmail(recipientEmail, subject, html);

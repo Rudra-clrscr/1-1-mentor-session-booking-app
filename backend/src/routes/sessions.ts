@@ -9,6 +9,7 @@ import { resolveJoinDecision } from '@/utils/sessionBooking';
 import { mentorAvailabilityRoom } from '@/socket/handlers/mentorAvailability';
 import { isWithinCancellationWindow } from '@/utils/cancellationPolicy';
 import { validateSessionInput } from '@/utils/sessionValidation';
+import { formatSessionTime } from '@/utils/formatSessionTime';
 
 class HttpError extends Error {
   constructor(public statusCode: number, message: string) {
@@ -212,11 +213,11 @@ router.post('/:id/join', authMiddleware, requireRole('student'), async (req: Aut
     // transition (not on idempotent re-joins of an already-booked session).
     if (justBooked) {
       const participants = await query(
-        `SELECT id, name, email, email_notifications_enabled FROM users WHERE id = ANY($1::uuid[])`,
+        `SELECT id, name, email, email_notifications_enabled, timezone FROM users WHERE id = ANY($1::uuid[])`,
         [[sessionData.mentor_id, sessionData.student_id]]
       );
       const joinLink = `${process.env.CLIENT_URL}/session/${sessionData.id}`;
-      for (const p of participants.rows as { id: string; name: string; email: string; email_notifications_enabled: boolean }[]) {
+      for (const p of participants.rows as { id: string; name: string; email: string; email_notifications_enabled: boolean; timezone?: string }[]) {
         if (p.email_notifications_enabled === false) continue;
         const otherParty = participants.rows.find((u: any) => u.id !== p.id);
         await sendEmail(
@@ -228,6 +229,7 @@ router.post('/:id/join', authMiddleware, requireRole('student'), async (req: Aut
             sessionTitle: sessionData.title as string,
             sessionTopic: sessionData.topic as string | undefined,
             scheduledAt: sessionData.scheduled_at as string | undefined,
+            recipientTimezone: p.timezone,
             joinLink,
           })
         );
@@ -589,9 +591,10 @@ function buildBookingConfirmationEmailHTML(params: {
   sessionTitle: string;
   sessionTopic?: string;
   scheduledAt?: string;
+  recipientTimezone?: string;
   joinLink: string;
 }): string {
-  const { recipientName, otherPartyName, sessionTitle, sessionTopic, scheduledAt, joinLink } = params;
+  const { recipientName, otherPartyName, sessionTitle, sessionTopic, scheduledAt, recipientTimezone, joinLink } = params;
   return `
 <!DOCTYPE html>
 <html lang="en">
@@ -626,7 +629,7 @@ function buildBookingConfirmationEmailHTML(params: {
           <div class="lbl">Session</div>
           <div class="val">${sessionTitle}</div>
           ${sessionTopic ? `<div class="lbl">Topic</div><div class="val">${sessionTopic}</div>` : ''}
-          ${scheduledAt ? `<div class="lbl">Scheduled Time</div><div class="val">${new Date(scheduledAt).toLocaleString()}</div>` : ''}
+          ${scheduledAt ? `<div class="lbl">Scheduled Time</div><div class="val">${formatSessionTime(new Date(scheduledAt), recipientTimezone)}</div>` : ''}
         </div>
         <a href="${joinLink}" class="btn">🚀 View Session</a>
       </div>

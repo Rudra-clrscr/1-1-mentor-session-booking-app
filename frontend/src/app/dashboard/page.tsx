@@ -8,6 +8,7 @@ import { Session, User } from '@/types';
 import { GlowingButton, GlowingCard, Badge, Avatar, LoadingSpinner, ErrorRetryBanner } from '@/components/ui/GlowingComponents';
 import CancelSessionButton from '@/components/CancelSessionButton';
 import CancelSeriesButton from '@/components/CancelSeriesButton';
+import { formatSessionDateTime } from '@/utils/formatDateTime';
 
 const FREQUENCY_LABEL: Record<string, string> = {
   weekly: 'Weekly',
@@ -258,12 +259,7 @@ export default function DashboardPage() {
                               <div className="min-w-0">
                                 <p className="text-sm text-gray-900 dark:text-white truncate">
                                   {session.scheduled_at
-                                    ? new Date(session.scheduled_at).toLocaleString(undefined, {
-                                        month: 'short',
-                                        day: 'numeric',
-                                        hour: 'numeric',
-                                        minute: '2-digit',
-                                      })
+                                    ? formatSessionDateTime(session.scheduled_at)
                                     : 'No date'}
                                 </p>
                                 <Badge color={session.status === 'cancelled' ? 'red' : 'green'}>

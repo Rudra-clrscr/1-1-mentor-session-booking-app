@@ -33,9 +33,11 @@ interface UpcomingSession {
   mentor_name: string;
   mentor_email: string;
   mentor_email_opt_in: boolean;
+  mentor_timezone?: string;
   student_name?: string;
   student_email?: string;
   student_email_opt_in?: boolean;
+  student_timezone?: string;
   reminder_sent_24h: boolean;
   reminder_sent_30m: boolean;
   reminder_sent_15m: boolean;
@@ -45,7 +47,8 @@ interface UpcomingSession {
 
 async function dispatchReminder(session: UpcomingSession, minutesBefore: number) {
   const { id, title, topic, scheduled_at, mentor_id, student_id,
-          mentor_name, mentor_email, mentor_email_opt_in, student_name, student_email, student_email_opt_in } = session;
+          mentor_name, mentor_email, mentor_email_opt_in, mentor_timezone,
+          student_name, student_email, student_email_opt_in, student_timezone } = session;
 
   const scheduledAt = new Date(scheduled_at);
   const timeLabel   = minutesBefore >= 60 ? `${minutesBefore / 60} hour(s)` : `${minutesBefore} minute(s)`;
@@ -64,6 +67,7 @@ async function dispatchReminder(session: UpcomingSession, minutesBefore: number)
       sessionTitle:   title,
       sessionTopic:   topic,
       scheduledAt,
+      recipientTimezone: mentor_timezone,
       minutesBefore,
       role: 'mentor',
     });
@@ -82,6 +86,7 @@ async function dispatchReminder(session: UpcomingSession, minutesBefore: number)
         sessionTitle:   title,
         sessionTopic:   topic,
         scheduledAt,
+        recipientTimezone: student_timezone,
         minutesBefore,
         role: 'student',
       });
@@ -119,8 +124,8 @@ async function check24hReminders() {
         s.id, s.title, s.topic, s.scheduled_at, s.duration_minutes,
         s.mentor_id, s.student_id,
         s.reminder_sent_24h, s.reminder_sent_30m, s.reminder_sent_15m,
-        m.name  AS mentor_name,  m.email  AS mentor_email,  m.email_notifications_enabled  AS mentor_email_opt_in,
-        st.name AS student_name, st.email AS student_email, st.email_notifications_enabled AS student_email_opt_in
+        m.name  AS mentor_name,  m.email  AS mentor_email,  m.email_notifications_enabled  AS mentor_email_opt_in, m.timezone AS mentor_timezone,
+        st.name AS student_name, st.email AS student_email, st.email_notifications_enabled AS student_email_opt_in, st.timezone AS student_timezone
       FROM sessions s
       JOIN users m  ON m.id  = s.mentor_id
       LEFT JOIN users st ON st.id = s.student_id
@@ -159,8 +164,8 @@ async function check30mReminders() {
         s.id, s.title, s.topic, s.scheduled_at, s.duration_minutes,
         s.mentor_id, s.student_id,
         s.reminder_sent_24h, s.reminder_sent_30m, s.reminder_sent_15m,
-        m.name  AS mentor_name,  m.email  AS mentor_email,  m.email_notifications_enabled  AS mentor_email_opt_in,
-        st.name AS student_name, st.email AS student_email, st.email_notifications_enabled AS student_email_opt_in
+        m.name  AS mentor_name,  m.email  AS mentor_email,  m.email_notifications_enabled  AS mentor_email_opt_in, m.timezone AS mentor_timezone,
+        st.name AS student_name, st.email AS student_email, st.email_notifications_enabled AS student_email_opt_in, st.timezone AS student_timezone
       FROM sessions s
       JOIN users m  ON m.id  = s.mentor_id
       LEFT JOIN users st ON st.id = s.student_id
@@ -198,8 +203,8 @@ async function check15mReminders() {
         s.id, s.title, s.topic, s.scheduled_at, s.duration_minutes,
         s.mentor_id, s.student_id,
         s.reminder_sent_24h, s.reminder_sent_30m, s.reminder_sent_15m,
-        m.name  AS mentor_name,  m.email  AS mentor_email,  m.email_notifications_enabled  AS mentor_email_opt_in,
-        st.name AS student_name, st.email AS student_email, st.email_notifications_enabled AS student_email_opt_in
+        m.name  AS mentor_name,  m.email  AS mentor_email,  m.email_notifications_enabled  AS mentor_email_opt_in, m.timezone AS mentor_timezone,
+        st.name AS student_name, st.email AS student_email, st.email_notifications_enabled AS student_email_opt_in, st.timezone AS student_timezone
       FROM sessions s
       JOIN users m  ON m.id  = s.mentor_id
       LEFT JOIN users st ON st.id = s.student_id
