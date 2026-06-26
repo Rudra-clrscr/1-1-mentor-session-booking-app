@@ -34,6 +34,10 @@ import {
   handleWhiteboardDraw,
   handleWhiteboardClear,
 } from './handlers/whiteboard';
+import {
+  handleMentorProfileWatch,
+  handleMentorProfileUnwatch,
+} from './handlers/mentorAvailability';
 
 export function setupSocketHandlers(io: SocketIOServer) {
   io.on('connection', (socket: Socket) => {
@@ -89,6 +93,10 @@ export function setupSocketHandlers(io: SocketIOServer) {
 
     // Presence events
     socket.on('presence:update', (data) => handlePresenceUpdate(socket, io, data));
+
+    // Mentor availability events
+    socket.on('mentor-profile:watch', (mentorId: string) => handleMentorProfileWatch(socket, mentorId));
+    socket.on('mentor-profile:unwatch', (mentorId: string) => handleMentorProfileUnwatch(socket, mentorId));
 
     // Recording events
     socket.on('recording:request', (data) => handleRecordingRequest(socket, io, data));

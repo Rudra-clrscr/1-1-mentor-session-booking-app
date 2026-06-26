@@ -5,6 +5,7 @@ import authMiddleware, { AuthRequest } from '@/middleware/auth';
 import { requireRole } from '@/middleware/requireRole';
 import { v4 as uuidv4 } from 'uuid';
 import { sendEmail } from '@/services/emailService';
+import { mentorAvailabilityRoom } from '@/socket/handlers/mentorAvailability';
 
 const router = Router();
 
@@ -275,6 +276,14 @@ router.post('/:id/cancel', authMiddleware, async (req: AuthRequest, res: Respons
       const payload = { seriesId: id, cancelledBy: userId, reason: reason ?? null };
       if (series.mentor_id) io.to(series.mentor_id as string).emit('series:cancelled', payload as any);
       if (series.student_id) io.to(series.student_id as string).emit('series:cancelled', payload as any);
+
+      // Frees up every future occurrence's slot — tell anyone watching the
+      // mentor's profile so it doesn't show stale "booked" state.
+      if (series.mentor_id) {
+        io.to(mentorAvailabilityRoom(series.mentor_id as string)).emit('mentor:availability-changed', {
+          mentorId: series.mentor_id,
+        });
+      }
     }
 
     return res.json({

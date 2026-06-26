@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { useParams, notFound } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { apiClient } from '@/services/api';
-import { User, Session } from '@/types';
+import { socketService } from '@/services/socket';
+import { User, Session, SocketEvents } from '@/types';
 import {
   GlowingButton,
   GlowingCard,
@@ -43,7 +44,7 @@ function formatTime(t: string): string {
 export default function MentorProfilePage() {
   const params = useParams();
   const mentorId = params.id as string;
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, token, isAuthenticated, isLoading: authLoading } = useAuth();
   const [mentor, setMentor] = useState<User | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [ratings, setRatings] = useState<Rating[]>([]);
@@ -52,6 +53,26 @@ export default function MentorProfilePage() {
   const [totalReviews, setTotalReviews] = useState(0);
   const [loading, setLoading] = useState(true);
   const [notFoundError, setNotFoundError] = useState(false);
+
+  // Re-fetches just the availability/sessions data, without touching the
+  // mentor/ratings state — used both on initial mount and whenever the
+  // server tells us this mentor's availability changed elsewhere (a
+  // booking or cancellation by another viewer).
+  const refetchAvailability = async () => {
+    const [availResult, sessionsResult] = await Promise.allSettled([
+      apiClient.getMentorAvailability(mentorId),
+      apiClient.getAvailableSessions(),
+    ]);
+
+    if (availResult.status === 'fulfilled') {
+      setAvailability((availResult.value as any).data || []);
+    }
+
+    if (sessionsResult.status === 'fulfilled') {
+      const all = (sessionsResult.value as any).data || [];
+      setSessions(all.filter((s: Session) => s.mentor_id === mentorId));
+    }
+  };
 
   useEffect(() => {
     if (!mentorId) return;
@@ -70,27 +91,15 @@ export default function MentorProfilePage() {
         setAvgRating(Number(mentorData.avg_rating ?? 0));
         setTotalReviews(Number(mentorData.total_sessions ?? 0));
 
-        const [ratingsResult, availResult, sessionsResult] = await Promise.allSettled([
-          apiClient.getRatings(mentorId),
-          apiClient.getMentorAvailability(mentorId),
-          apiClient.getAvailableSessions(),
-        ]);
-
-        if (ratingsResult.status === 'fulfilled') {
-          const r = ratingsResult.value as any;
+        const ratingsResult = await apiClient.getRatings(mentorId).catch(() => null);
+        if (ratingsResult) {
+          const r = ratingsResult as any;
           setRatings((r.data || []).slice(0, 5));
           if (r.avg_rating !== undefined) setAvgRating(Number(r.avg_rating));
           if (r.total_reviews !== undefined) setTotalReviews(Number(r.total_reviews));
         }
 
-        if (availResult.status === 'fulfilled') {
-          setAvailability((availResult.value as any).data || []);
-        }
-
-        if (sessionsResult.status === 'fulfilled') {
-          const all = (sessionsResult.value as any).data || [];
-          setSessions(all.filter((s: Session) => s.mentor_id === mentorId));
-        }
+        await refetchAvailability();
       } catch {
         setNotFoundError(true);
       } finally {
@@ -100,6 +109,31 @@ export default function MentorProfilePage() {
 
     fetchData();
   }, [mentorId]);
+
+  // Watch this mentor's availability for live changes (booking/cancellation
+  // by anyone, in any tab) so the slot list doesn't go stale until a reload.
+  useEffect(() => {
+    if (!mentorId || !isAuthenticated || !token) return;
+
+    if (!socketService.isConnected()) {
+      socketService.connect(token);
+    }
+
+    socketService.watchMentorAvailability(mentorId);
+
+    const handleAvailabilityChanged = (data: SocketEvents['mentor:availability-changed']) => {
+      if (data.mentorId === mentorId) {
+        refetchAvailability();
+      }
+    };
+
+    socketService.on('mentor:availability-changed', handleAvailabilityChanged);
+
+    return () => {
+      socketService.off('mentor:availability-changed', handleAvailabilityChanged);
+      socketService.unwatchMentorAvailability(mentorId);
+    };
+  }, [mentorId, isAuthenticated, token]);
 
   if (authLoading || loading) {
     return (

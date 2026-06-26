@@ -210,6 +210,11 @@ export interface SocketEvents {
   // Whiteboard Events
   'whiteboard:draw': { segment: WhiteboardSegment; userId: string };
   'whiteboard:clear': { userId: string };
+
+  // Mentor Availability Events
+  'mentor-profile:watch': string;
+  'mentor-profile:unwatch': string;
+  'mentor:availability-changed': { mentorId: string };
 }
 
 export interface WhiteboardSegment {

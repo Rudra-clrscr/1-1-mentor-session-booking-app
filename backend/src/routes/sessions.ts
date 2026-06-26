@@ -6,6 +6,7 @@ import { requireRole } from '@/middleware/requireRole';
 import { v4 as uuidv4 } from 'uuid';
 import { sendEmail } from '@/services/emailService';
 import { resolveJoinDecision } from '@/utils/sessionBooking';
+import { mentorAvailabilityRoom } from '@/socket/handlers/mentorAvailability';
 
 class HttpError extends Error {
   constructor(public statusCode: number, message: string) {
@@ -223,6 +224,14 @@ router.post('/:id/join', authMiddleware, requireRole('student'), async (req: Aut
             joinLink,
           })
         );
+      }
+
+      // Notify anyone currently viewing this mentor's profile that the slot
+      // they're looking at is gone, so they don't need to reload to see it.
+      if (io) {
+        io.to(mentorAvailabilityRoom(sessionData.mentor_id as string)).emit('mentor:availability-changed', {
+          mentorId: sessionData.mentor_id,
+        });
       }
     }
 
@@ -746,6 +755,12 @@ router.post('/:id/cancel', authMiddleware, async (req: AuthRequest, res: Respons
       if (session.mentor_id) io.to(session.mentor_id as string).emit('session:cancelled', payload);
       if (session.student_id) io.to(session.student_id as string).emit('session:cancelled', payload);
       io.to(`session:${id}`).emit('session:cancelled', payload);
+
+      // Cancelling frees up this mentor's slot again — tell anyone watching
+      // the mentor's profile so it doesn't show stale "booked" state.
+      io.to(mentorAvailabilityRoom(session.mentor_id as string)).emit('mentor:availability-changed', {
+        mentorId: session.mentor_id,
+      });
     }
 
     return res.status(200).json({

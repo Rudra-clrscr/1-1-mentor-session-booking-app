@@ -318,6 +318,15 @@ class SocketService {
     this.emit('session:ended', { sessionId, mentorId, studentId } as any);
   }
 
+  // Mentor availability
+  watchMentorAvailability(mentorId: string) {
+    this.emit('mentor-profile:watch', mentorId);
+  }
+
+  unwatchMentorAvailability(mentorId: string) {
+    this.emit('mentor-profile:unwatch', mentorId);
+  }
+
   // Chat
   sendMessage(content: string, attachment?: MessageAttachment) {
     console.log('📤 SocketService.sendMessage called:', content, attachment);
